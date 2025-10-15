@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/search/route.tsx": {
+      "maxDuration": 10,
+      "memory": 1024
+    },
+    "src/app/api/profile/*/route.ts": {
+      "maxDuration": 15,
+      "memory": 1024
+    }
+  },
+  "regions": ["iad1", "sfo1"]
+}
