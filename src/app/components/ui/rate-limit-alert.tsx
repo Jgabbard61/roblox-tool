@@ -2,20 +2,21 @@
 
 import React from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
-import { RateLimitStatus, formatRetryDuration } from '@/app/lib/utils/rate-limit-detector';
+import { RateLimitInfo, formatRetryAfterTime } from '@/app/lib/utils/rate-limit-detector';
 
 export interface RateLimitAlertProps {
-  rateLimitStatus: RateLimitStatus;
+  rateLimitInfo: RateLimitInfo;
   onDismiss?: () => void;
 }
 
-export function RateLimitAlert({ rateLimitStatus, onDismiss }: RateLimitAlertProps) {
-  if (!rateLimitStatus.isRateLimited) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function RateLimitAlert({ rateLimitInfo, onDismiss }: RateLimitAlertProps) {
+  if (!rateLimitInfo.isRateLimited) {
     return null;
   }
 
-  const retryMessage = rateLimitStatus.retryAfter
-    ? `Please try again in ${formatRetryDuration(rateLimitStatus.retryAfter)}.`
+  const retryMessage = rateLimitInfo.retryAfterSeconds
+    ? `Please try again in ${formatRetryAfterTime(rateLimitInfo.retryAfterSeconds)}.`
     : 'Please try again later.';
 
   return (
@@ -25,9 +26,9 @@ export function RateLimitAlert({ rateLimitStatus, onDismiss }: RateLimitAlertPro
         <p className="mb-2">
           You&apos;ve made too many requests to the Roblox API. {retryMessage}
         </p>
-        {rateLimitStatus.resetTime && (
+        {rateLimitInfo.retryAfterDate && (
           <p className="text-xs opacity-80">
-            Rate limit will reset at {rateLimitStatus.resetTime.toLocaleTimeString()}
+            Rate limit will reset at {rateLimitInfo.retryAfterDate.toLocaleTimeString()}
           </p>
         )}
       </AlertDescription>

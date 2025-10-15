@@ -1,5 +1,19 @@
-import { NextResponse } from 'next/server';
-import { detectRateLimit } from '@/app/lib/utils/rate-limit-detector';
+// app/api/search/route.tsx - Production Ready with All Protections
+import { NextResponse } from "next/server";
+import {
+  fetchWithRateLimitDetection,
+  RateLimitError,
+} from "@/app/lib/utils/rate-limit-detector";
+import {
+  generateCacheKey,
+  withCache,
+  CACHE_TTL,
+  isExactSearch,
+} from "@/app/lib/utils/cache";
+import { withRetry } from "@/app/lib/utils/retry";
+import { robloxApiQueue } from "@/app/lib/utils/request-queue";
+import { robloxApiCircuitBreaker } from "@/app/lib/utils/circuit-breaker";
+import { metricsCollector } from "@/app/lib/utils/monitoring";
 
 // Define TypeScript interfaces for Roblox API responses
 interface RobloxUser {
@@ -21,85 +35,129 @@ interface RobloxSearchResponse {
 
 interface ErrorResponse {
   error: string;
-  rateLimitStatus?: {
-    isRateLimited: boolean;
-    retryAfter?: number;
-    remainingRequests?: number;
-    resetTime?: string;
-  };
+  message?: string;
+  retryAfter?: number;
+  retryAfterDate?: string;
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const keyword = searchParams.get('keyword');
-  const limit = searchParams.get('limit') || '10';
-  const cursor = searchParams.get('cursor');
+export const dynamic = "force-dynamic";
 
-  if (!keyword) {
-    return NextResponse.json(
-      { error: 'Missing keyword' } as ErrorResponse,
-      { status: 400 }
-    );
-  }
+export async function GET(request: Request) {
+  const start = Date.now();
+  let fromCache = false;
 
   try {
-    // Build the API URL
-    let apiUrl = `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`;
-    if (cursor) {
-      apiUrl += `&cursor=${encodeURIComponent(cursor)}`;
-    }
+    const { searchParams } = new URL(request.url);
+    const keyword = searchParams.get("keyword");
+    const limit = searchParams.get("limit") || "10";
+    const cursor = searchParams.get("cursor");
 
-    const response = await fetch(apiUrl);
-    
-    // Detect rate limiting
-    const rateLimitStatus = detectRateLimit(response);
-    
-    if (rateLimitStatus.isRateLimited) {
+    // Validation
+    if (!keyword) {
       return NextResponse.json(
-        {
-          error: 'Rate limit exceeded',
-          rateLimitStatus: {
-            isRateLimited: true,
-            retryAfter: rateLimitStatus.retryAfter,
-            remainingRequests: rateLimitStatus.remainingRequests,
-            resetTime: rateLimitStatus.resetTime?.toISOString(),
-          },
-        } as ErrorResponse,
-        { status: 429 }
+        { error: "Keyword parameter is required" } as ErrorResponse,
+        { status: 400 }
       );
     }
 
-    // Check for other errors
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (keyword.length < 3) {
       return NextResponse.json(
-        { error: `Roblox API error: ${response.status} - ${errorText}` } as ErrorResponse,
-        { status: response.status }
+        { error: "Keyword must be at least 3 characters" } as ErrorResponse,
+        { status: 400 }
       );
     }
 
-    const data = await response.json() as RobloxSearchResponse;
-    
-    // Validate that we have the expected data structure
-    if (!data.data || !Array.isArray(data.data)) {
-      return NextResponse.json(
-        { error: 'Invalid response from Roblox API' } as ErrorResponse,
-        { status: 502 }
-      );
-    }
+    // Generate cache key
+    const cacheKey = generateCacheKey(
+      {
+        type: "user_search",
+        keyword: keyword.toLowerCase().trim(),
+        limit,
+        cursor: cursor || "none",
+      },
+      "roblox"
+    );
 
-    // Add rate limit headers to response
-    const headers: Record<string, string> = {};
-    if (rateLimitStatus.remainingRequests !== undefined) {
-      headers['X-RateLimit-Remaining'] = rateLimitStatus.remainingRequests.toString();
-    }
-    if (rateLimitStatus.resetTime) {
-      headers['X-RateLimit-Reset'] = rateLimitStatus.resetTime.toISOString();
-    }
+    // Determine TTL based on search type
+    const ttl = isExactSearch(keyword)
+      ? CACHE_TTL.EXACT_SEARCH
+      : CACHE_TTL.FUZZY_SEARCH;
+
+    // Fetch with all protections: cache, queue, circuit breaker, retry
+    const result = await withCache(
+      cacheKey,
+      async () => {
+        // Use circuit breaker
+        return await robloxApiCircuitBreaker.execute(async () => {
+          // Use request queue
+          return await robloxApiQueue.enqueue(async () => {
+            // Use retry logic
+            return await withRetry(
+              async () => {
+                // Build the API URL
+                let apiUrl = `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(
+                  keyword
+                )}&limit=${limit}`;
+                if (cursor) {
+                  apiUrl += `&cursor=${encodeURIComponent(cursor)}`;
+                }
+
+                const response = await fetchWithRateLimitDetection(
+                  apiUrl,
+                  {
+                    method: "GET",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "User-Agent": "RobloxVerifier/1.0",
+                    },
+                  },
+                  {
+                    defaultRetryAfter: 60,
+                    parseHeaders: true,
+                  }
+                );
+
+                if (!response.ok) {
+                  throw new Error(
+                    `Roblox API returned ${response.status}: ${response.statusText}`
+                  );
+                }
+
+                const data = (await response.json()) as RobloxSearchResponse;
+
+                // Validate that we have the expected data structure
+                if (!data.data || !Array.isArray(data.data)) {
+                  throw new Error("Invalid response from Roblox API");
+                }
+
+                return data;
+              },
+              {
+                maxRetries: 2,
+                initialDelayMs: 1000,
+                backoffMultiplier: 2,
+                onRetry: (error, attempt, delayMs) => {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  console.log(
+                    `Retrying search for "${keyword}" (attempt ${
+                      attempt + 1
+                    }, delay ${delayMs}ms): ${errorMessage}`
+                  );
+                },
+              }
+            );
+          }, 5); // Priority 5 for user searches
+        });
+      },
+      { ttl }
+    );
+
+    fromCache = result.fromCache;
+    const searchResults = result.data;
 
     // Map the data to ensure all users have the expected structure
-    const users: RobloxUser[] = data.data.map((user) => ({
-      id: user.id,  // ✅ TypeScript now knows 'id' exists on RobloxUser
+    const users: RobloxUser[] = searchResults.data.map((user) => ({
+      id: user.id,
       name: user.name,
       displayName: user.displayName,
       hasVerifiedBadge: user.hasVerifiedBadge || false,
@@ -109,17 +167,99 @@ export async function GET(request: Request) {
       isBanned: user.isBanned,
     }));
 
-    const responseData: RobloxSearchResponse = {
-      previousPageCursor: data.previousPageCursor,
-      nextPageCursor: data.nextPageCursor,
+    const responseData = {
+      previousPageCursor: searchResults.previousPageCursor,
+      nextPageCursor: searchResults.nextPageCursor,
       data: users,
+      fromCache,
+      cacheTtl: ttl,
     };
 
-    return NextResponse.json(responseData, { headers });
+    // Log metrics
+    metricsCollector.log({
+      endpoint: "/api/search",
+      method: "GET",
+      statusCode: 200,
+      responseTimeMs: Date.now() - start,
+      cacheHit: fromCache,
+      rateLimited: false,
+      error: false,
+      timestamp: Date.now(),
+    });
+
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error('Search API error:', error);
+    // Handle rate limit errors
+    if (error instanceof RateLimitError) {
+      // Log metrics
+      metricsCollector.log({
+        endpoint: "/api/search",
+        method: "GET",
+        statusCode: 429,
+        responseTimeMs: Date.now() - start,
+        cacheHit: false,
+        rateLimited: true,
+        error: true,
+        timestamp: Date.now(),
+      });
+
+      return NextResponse.json(
+        {
+          error: "rate_limited",
+          message: "Too many requests. Please wait before trying again.",
+          retryAfter: error.rateLimitInfo.retryAfterSeconds,
+          retryAfterDate: error.rateLimitInfo.retryAfterDate?.toISOString(),
+        } as ErrorResponse,
+        { status: 429 }
+      );
+    }
+
+    // Handle circuit breaker errors
+    if (error instanceof Error && error.message.includes("Circuit breaker is OPEN")) {
+      // Log metrics
+      metricsCollector.log({
+        endpoint: "/api/search",
+        method: "GET",
+        statusCode: 503,
+        responseTimeMs: Date.now() - start,
+        cacheHit: false,
+        rateLimited: false,
+        error: true,
+        timestamp: Date.now(),
+      });
+
+      return NextResponse.json(
+        {
+          error: "service_unavailable",
+          message: "Service temporarily unavailable. Please try again later.",
+        } as ErrorResponse,
+        { status: 503 }
+      );
+    }
+
+    // Handle other errors
+    console.error("Search API error:", error);
+    
+    // Log metrics
+    metricsCollector.log({
+      endpoint: "/api/search",
+      method: "GET",
+      statusCode: 500,
+      responseTimeMs: Date.now() - start,
+      cacheHit: false,
+      rateLimited: false,
+      error: true,
+      timestamp: Date.now(),
+    });
+
     return NextResponse.json(
-      { error: 'Failed to fetch from Roblox' } as ErrorResponse,
+      {
+        error: "internal_error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while searching for users",
+      } as ErrorResponse,
       { status: 500 }
     );
   }
