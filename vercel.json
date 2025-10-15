@@ -1,6 +1,6 @@
 {
   "functions": {
-    "src/app/api/search/route.tsx": {
+    "src/app/api/search/route.ts": {
       "maxDuration": 10,
       "memory": 1024
     },

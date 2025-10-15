@@ -5,7 +5,7 @@ import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 // NextAuth configuration
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   // Configure authentication providers
   providers: [
     CredentialsProvider({

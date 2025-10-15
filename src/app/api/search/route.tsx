@@ -137,10 +137,11 @@ export async function GET(request: Request) {
                 initialDelayMs: 1000,
                 backoffMultiplier: 2,
                 onRetry: (error, attempt, delayMs) => {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
                   console.log(
                     `Retrying search for "${keyword}" (attempt ${
                       attempt + 1
-                    }, delay ${delayMs}ms): ${error.message}`
+                    }, delay ${delayMs}ms): ${errorMessage}`
                   );
                 },
               }
@@ -215,8 +216,6 @@ export async function GET(request: Request) {
 
     // Handle circuit breaker errors
     if (error instanceof Error && error.message.includes("Circuit breaker is OPEN")) {
-      statusCode = 503;
-      
       // Log metrics
       metricsCollector.log({
         endpoint: "/api/search",
@@ -240,7 +239,6 @@ export async function GET(request: Request) {
 
     // Handle other errors
     console.error("Search API error:", error);
-    statusCode = 500;
     
     // Log metrics
     metricsCollector.log({

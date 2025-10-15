@@ -98,8 +98,13 @@ export class RequestQueue {
    * @returns Promise that resolves with the function result
    */
   async enqueue<T>(fn: () => Promise<T>, priority?: number): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ fn, resolve, reject, priority });
+    return new Promise<T>((resolve, reject) => {
+      this.queue.push({ 
+        fn, 
+        resolve: resolve as (value: unknown) => void, 
+        reject, 
+        priority 
+      });
       this.processNext();
     });
   }
