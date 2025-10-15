@@ -23,6 +23,7 @@ export default function SearchModeSelector({
     tooltip: string;
     gradient: string;
     cooldown?: { isOnCooldown: boolean; remainingSeconds: number };
+    comingSoon?: boolean;
   }[] = [
     {
       id: 'exact',
@@ -43,9 +44,10 @@ export default function SearchModeSelector({
       id: 'displayName',
       icon: '🏷️',
       label: 'Display Name',
-      tooltip: 'Fuzzy search by display name (not username). Shows all matching results. 30s cooldown.',
+      tooltip: 'Coming soon! This feature is being improved and will be available shortly.',
       gradient: 'from-orange-500 to-pink-500',
       cooldown: displayNameCooldown,
+      comingSoon: true,
     },
   ];
 
@@ -54,8 +56,8 @@ export default function SearchModeSelector({
       <h3 className="text-sm font-medium text-gray-700 mb-3">Search Mode</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {modes.map((mode) => {
-          const isDisabled = mode.cooldown?.isOnCooldown || false;
-          const isSelected = selectedMode === mode.id;
+          const isDisabled = mode.cooldown?.isOnCooldown || mode.comingSoon || false;
+          const isSelected = selectedMode === mode.id && !mode.comingSoon;
           
           return (
             <div key={mode.id} className="relative group">
@@ -76,7 +78,15 @@ export default function SearchModeSelector({
                   <span className="text-3xl">{mode.icon}</span>
                   <span className="font-semibold text-sm">{mode.label}</span>
                   
-                  {mode.cooldown?.isOnCooldown && (
+                  {mode.comingSoon && (
+                    <div className="mt-2">
+                      <span className="inline-block px-3 py-1 text-xs font-semibold bg-gradient-to-r from-orange-400 to-pink-400 text-white rounded-full">
+                        Coming Soon
+                      </span>
+                    </div>
+                  )}
+                  
+                  {mode.cooldown?.isOnCooldown && !mode.comingSoon && (
                     <div className="w-full mt-2">
                       <div className="text-xs font-medium mb-1">
                         {mode.cooldown.remainingSeconds}s remaining
@@ -109,18 +119,11 @@ export default function SearchModeSelector({
       </div>
       
       {/* Alternative modes suggestion during cooldown */}
-      {(smartCooldown.isOnCooldown || displayNameCooldown.isOnCooldown) && (
+      {smartCooldown.isOnCooldown && (
         <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-800">
             💡 <span className="font-medium">Tip:</span> While waiting for cooldown, try using{' '}
-            {smartCooldown.isOnCooldown && displayNameCooldown.isOnCooldown ? (
-              <strong>Exact Match</strong>
-            ) : smartCooldown.isOnCooldown ? (
-              <strong>Exact Match or Display Name</strong>
-            ) : (
-              <strong>Exact Match or Smart Match</strong>
-            )}{' '}
-            mode!
+            <strong>Exact Match</strong> mode!
           </p>
         </div>
       )}
