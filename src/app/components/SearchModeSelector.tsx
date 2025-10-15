@@ -43,7 +43,7 @@ export default function SearchModeSelector({
       id: 'displayName',
       icon: '🏷️',
       label: 'Display Name',
-      tooltip: 'Search by display name (not username). Returns multiple results. 30s cooldown.',
+      tooltip: 'Fuzzy search by display name (not username). Shows all matching results. 30s cooldown.',
       gradient: 'from-orange-500 to-pink-500',
       cooldown: displayNameCooldown,
     },

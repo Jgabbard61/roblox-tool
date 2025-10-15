@@ -12,6 +12,7 @@ import SmartSuggest from './components/SmartSuggest';
 import ForensicMode from './components/ForensicMode';
 import SearchModeSelector, { SearchMode } from './components/SearchModeSelector';
 import DisplayNameResults from './components/DisplayNameResults';
+import NoResultsModal from './components/NoResultsModal';
 import { useCooldown } from './hooks/useCooldown';
 import { getTopSuggestions } from './lib/ranking';
 
@@ -81,6 +82,8 @@ function VerifierTool() {
   const [originalDisplayNameQuery, setOriginalDisplayNameQuery] = useState<string>('');
   const [searchMode, setSearchMode] = useState<SearchMode>('exact');
   const [displayNameUsers, setDisplayNameUsers] = useState<UserResult[]>([]);
+  const [showNoResultsModal, setShowNoResultsModal] = useState<boolean>(false);
+  const [noResultsQuery, setNoResultsQuery] = useState<string>('');
 
   // Cooldown hooks for Smart and Display Name modes
   const smartCooldown = useCooldown({ key: 'smart_search', durationSeconds: 30 });
@@ -140,44 +143,114 @@ function VerifierTool() {
             smartCooldown.startCooldown();
           }
           
-          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
-          if (!response.ok) throw new Error('Roblox API error');
-          const searchData = await response.json();
-          const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
-          
-          if (!isCurrentlyBatchMode) {
-            setScoredCandidates(candidates);
-            setOriginalDisplayNameQuery(parsed.value);
+          try {
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              
+              // Handle rate limiting specifically
+              if (response.status === 429) {
+                throw new Error('Rate limited. Please wait before searching again.');
+              } else if (response.status === 503) {
+                throw new Error('Service temporarily unavailable. Please try again in a moment.');
+              } else {
+                throw new Error(errorData.message || 'Failed to search. Please try again.');
+              }
+            }
+            
+            const searchData = await response.json();
+            const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+            
+            if (!isCurrentlyBatchMode) {
+              setScoredCandidates(candidates);
+              setOriginalDisplayNameQuery(parsed.value);
+            }
+            
+            outputs.push({
+              input: singleInput,
+              status: candidates.length > 0 ? 'Suggestions' : 'Not Found',
+              suggestions: candidates,
+              details: candidates.length === 0 ? 'No similar matches found' : undefined,
+            });
+          } catch (smartSearchError: unknown) {
+            console.error('Smart Search error:', smartSearchError);
+            const errorMessage = smartSearchError instanceof Error ? smartSearchError.message : 'Search failed';
+            
+            if (!isCurrentlyBatchMode) {
+              setScoredCandidates([]);
+              setResult(
+                <div className="bg-red-100 p-4 rounded-md">
+                  <h2 className="text-xl font-bold text-red-800">Search Error</h2>
+                  <p className="mb-2">{errorMessage}</p>
+                  <p className="text-sm text-red-700">Try using <strong>Exact Match</strong> mode if you know the exact username.</p>
+                </div>
+              );
+            }
+            
+            outputs.push({
+              input: singleInput,
+              status: 'Error',
+              details: errorMessage,
+            });
           }
-          
-          outputs.push({
-            input: singleInput,
-            status: candidates.length > 0 ? 'Suggestions' : 'Not Found',
-            suggestions: candidates,
-            details: candidates.length === 0 ? 'No matches' : undefined,
-          });
           continue;
         } else if (searchMode === 'displayName') {
-          // Display Name Mode - search by display name, show all results, trigger cooldown
+          // Display Name Mode - fuzzy search showing all matching results, trigger cooldown
           if (!isCurrentlyBatchMode) {
             displayNameCooldown.startCooldown();
           }
           
-          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=20`);
-          if (!response.ok) throw new Error('Roblox API error');
-          const searchData = await response.json();
-          const users = searchData.data || [];
-          
-          if (!isCurrentlyBatchMode) {
-            setDisplayNameUsers(users);
-            setOriginalDisplayNameQuery(parsed.value);
+          try {
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=20`);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              
+              // Handle rate limiting specifically
+              if (response.status === 429) {
+                throw new Error('Rate limited. Please wait before searching again.');
+              } else if (response.status === 503) {
+                throw new Error('Service temporarily unavailable. Please try again in a moment.');
+              } else {
+                throw new Error(errorData.message || 'Failed to search. Please try again.');
+              }
+            }
+            
+            const searchData = await response.json();
+            const users = searchData.data || [];
+            
+            if (!isCurrentlyBatchMode) {
+              setDisplayNameUsers(users);
+              setOriginalDisplayNameQuery(parsed.value);
+            }
+            
+            outputs.push({
+              input: singleInput,
+              status: users.length > 0 ? 'Found' : 'Not Found',
+              details: users.length > 0 ? `Found ${users.length} user(s) matching "${parsed.value}"` : 'No matches found',
+            });
+          } catch (displayNameError: unknown) {
+            console.error('Display Name search error:', displayNameError);
+            const errorMessage = displayNameError instanceof Error ? displayNameError.message : 'Search failed';
+            
+            if (!isCurrentlyBatchMode) {
+              setDisplayNameUsers([]);
+              setResult(
+                <div className="bg-red-100 p-4 rounded-md">
+                  <h2 className="text-xl font-bold text-red-800">Search Error</h2>
+                  <p className="mb-2">{errorMessage}</p>
+                  <p className="text-sm text-red-700">Try using <strong>Exact Match</strong> mode if you know the exact username.</p>
+                </div>
+              );
+            }
+            
+            outputs.push({
+              input: singleInput,
+              status: 'Error',
+              details: errorMessage,
+            });
           }
-          
-          outputs.push({
-            input: singleInput,
-            status: users.length > 0 ? 'Found' : 'Not Found',
-            details: users.length > 0 ? `Found ${users.length} user(s)` : 'No matches',
-          });
           continue;
         } else if (parsed.type === 'userId' || parsed.type === 'url') {
           const id = parsed.userId || parsed.value;
@@ -295,6 +368,12 @@ function VerifierTool() {
       } else if (out.status === 'Not Found') {
         setScoredCandidates([]);
         
+        // Show modal for Exact Search mode only
+        if (searchMode === 'exact') {
+          setNoResultsQuery(input);
+          setShowNoResultsModal(true);
+        }
+        
         setResult(
           <div className="bg-red-100 p-4 rounded-md">
             <h2 className="text-xl font-bold text-red-800">{out.status}</h2>
@@ -342,6 +421,13 @@ function VerifierTool() {
   const handleInspectCandidate = (userId: number) => {
     setSelectedUserId(userId.toString());
     setShowDeepContext(true);
+  };
+
+  const handleTrySmartSearch = () => {
+    setShowNoResultsModal(false);
+    setSearchMode('smart');
+    setInput(noResultsQuery);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (status === 'loading') {
@@ -509,6 +595,13 @@ function VerifierTool() {
           }}
         />
       )}
+
+      <NoResultsModal
+        isOpen={showNoResultsModal}
+        onClose={() => setShowNoResultsModal(false)}
+        onTrySmartSearch={handleTrySmartSearch}
+        searchQuery={noResultsQuery}
+      />
     </main>
   );
 }
