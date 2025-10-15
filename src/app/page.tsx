@@ -10,6 +10,9 @@ import { useRouter } from 'next/navigation';
 import DeepContext from './components/DeepContext';
 import SmartSuggest from './components/SmartSuggest';
 import ForensicMode from './components/ForensicMode';
+import SearchModeSelector, { SearchMode } from './components/SearchModeSelector';
+import DisplayNameResults from './components/DisplayNameResults';
+import { useCooldown } from './hooks/useCooldown';
 import { getTopSuggestions } from './lib/ranking';
 
 function normalizeInput(rawInput: string): { type: 'username' | 'displayName' | 'userId' | 'url' | 'invalid'; value: string; userId?: string } {
@@ -76,6 +79,12 @@ function VerifierTool() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [scoredCandidates, setScoredCandidates] = useState<ScoredCandidate[]>([]);
   const [originalDisplayNameQuery, setOriginalDisplayNameQuery] = useState<string>('');
+  const [searchMode, setSearchMode] = useState<SearchMode>('exact');
+  const [displayNameUsers, setDisplayNameUsers] = useState<UserResult[]>([]);
+
+  // Cooldown hooks for Smart and Display Name modes
+  const smartCooldown = useCooldown({ key: 'smart_search', durationSeconds: 30 });
+  const displayNameCooldown = useCooldown({ key: 'display_name_search', durationSeconds: 30 });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -90,6 +99,7 @@ function VerifierTool() {
     setBatchResults([]);
     setScoredCandidates([]);
     setOriginalDisplayNameQuery('');
+    setDisplayNameUsers([]);
     
     // Use local variable to avoid React state update race conditions
     const isCurrentlyBatchMode = batchInputs.length > 0;
@@ -113,7 +123,9 @@ function VerifierTool() {
         let response;
         let user: RobloxResponse | null = null;
 
-        if (parsed.type === 'username') {
+        // Handle different search modes
+        if (searchMode === 'exact' && parsed.type === 'username') {
+          // Exact Match Mode - direct username lookup, no cooldown
           response = await fetch('/api/roblox', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -122,14 +134,10 @@ function VerifierTool() {
           if (!response.ok) throw new Error('Roblox API error');
           const data = await response.json();
           user = data.data?.[0] || null;
-        } else if (parsed.type === 'userId' || parsed.type === 'url') {
-          const id = parsed.userId || parsed.value;
-          response = await fetch(`/api/roblox?userId=${id}`);
-          if (!response.ok) throw new Error('Roblox API error');
-          user = await response.json();
-        } else {
+        } else if (searchMode === 'smart' && (parsed.type === 'username' || parsed.type === 'displayName')) {
+          // Smart Match Mode - fuzzy search with AI ranking, trigger cooldown
           if (!isCurrentlyBatchMode) {
-            setOriginalDisplayNameQuery(parsed.value);
+            smartCooldown.startCooldown();
           }
           
           response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
@@ -139,6 +147,63 @@ function VerifierTool() {
           
           if (!isCurrentlyBatchMode) {
             setScoredCandidates(candidates);
+            setOriginalDisplayNameQuery(parsed.value);
+          }
+          
+          outputs.push({
+            input: singleInput,
+            status: candidates.length > 0 ? 'Suggestions' : 'Not Found',
+            suggestions: candidates,
+            details: candidates.length === 0 ? 'No matches' : undefined,
+          });
+          continue;
+        } else if (searchMode === 'displayName') {
+          // Display Name Mode - search by display name, show all results, trigger cooldown
+          if (!isCurrentlyBatchMode) {
+            displayNameCooldown.startCooldown();
+          }
+          
+          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=20`);
+          if (!response.ok) throw new Error('Roblox API error');
+          const searchData = await response.json();
+          const users = searchData.data || [];
+          
+          if (!isCurrentlyBatchMode) {
+            setDisplayNameUsers(users);
+            setOriginalDisplayNameQuery(parsed.value);
+          }
+          
+          outputs.push({
+            input: singleInput,
+            status: users.length > 0 ? 'Found' : 'Not Found',
+            details: users.length > 0 ? `Found ${users.length} user(s)` : 'No matches',
+          });
+          continue;
+        } else if (parsed.type === 'userId' || parsed.type === 'url') {
+          const id = parsed.userId || parsed.value;
+          response = await fetch(`/api/roblox?userId=${id}`);
+          if (!response.ok) throw new Error('Roblox API error');
+          user = await response.json();
+        } else if (parsed.type === 'username') {
+          // Fallback for username in non-exact mode
+          response = await fetch('/api/roblox', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: parsed.value, includeBanned }),
+          });
+          if (!response.ok) throw new Error('Roblox API error');
+          const data = await response.json();
+          user = data.data?.[0] || null;
+        } else {
+          // Fallback to search for other cases
+          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
+          if (!response.ok) throw new Error('Roblox API error');
+          const searchData = await response.json();
+          const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+          
+          if (!isCurrentlyBatchMode) {
+            setScoredCandidates(candidates);
+            setOriginalDisplayNameQuery(parsed.value);
           }
           
           outputs.push({
@@ -170,6 +235,7 @@ function VerifierTool() {
             avatar: user.id,
           });
         } else {
+          // If no user found with exact match, try search
           response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
           if (!response.ok) throw new Error('Roblox API error');
           const searchData = await response.json();
@@ -303,12 +369,27 @@ function VerifierTool() {
             Roblox Verifier Tool
           </h1>
 
+          {!isBatchMode && (
+            <SearchModeSelector
+              selectedMode={searchMode}
+              onModeChange={setSearchMode}
+              smartCooldown={smartCooldown}
+              displayNameCooldown={displayNameCooldown}
+            />
+          )}
+
           <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Enter username, display name, user ID, or URL"
+              placeholder={
+                searchMode === 'exact'
+                  ? 'Enter exact username, user ID, or URL'
+                  : searchMode === 'smart'
+                  ? 'Enter username for smart matching'
+                  : 'Enter display name to search'
+              }
               className="w-full rounded-md border border-gray-300 p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
             />
             
@@ -325,9 +406,9 @@ function VerifierTool() {
             <button
               type="submit"
               className="w-full rounded-md bg-gradient-to-r from-blue-500 to-purple-600 p-3 text-white font-medium hover:from-blue-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 transition shadow-lg"
-              disabled={loading}
+              disabled={loading || (searchMode === 'smart' && smartCooldown.isOnCooldown) || (searchMode === 'displayName' && displayNameCooldown.isOnCooldown)}
             >
-              {loading ? 'Verifying...' : '🔍 Verify'}
+              {loading ? 'Searching...' : searchMode === 'exact' ? '🎯 Exact Search' : searchMode === 'smart' ? '🧠 Smart Search' : '🏷️ Search Display Names'}
             </button>
           </form>
 
@@ -360,7 +441,17 @@ function VerifierTool() {
 
           {result && <div className="mt-6 rounded-md bg-gray-100 p-6 shadow-inner">{result}</div>}
 
-          {!isBatchMode && scoredCandidates.length > 0 && (
+          {!isBatchMode && searchMode === 'displayName' && displayNameUsers.length > 0 && (
+            <DisplayNameResults
+              users={displayNameUsers}
+              query={originalDisplayNameQuery}
+              onSelect={handleSelectCandidate}
+              onInspect={handleInspectCandidate}
+              loading={loading}
+            />
+          )}
+
+          {!isBatchMode && searchMode === 'smart' && scoredCandidates.length > 0 && (
             <SmartSuggest
               candidates={scoredCandidates}
               query={originalDisplayNameQuery}
