@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
     "autoprefixer": "^10.4.21",
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/fast-levenshtein": "^0.0.4",
+    "@types/ioredis": "^4.28.10",
     "@types/next-auth": "^3.13.0",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.16",
