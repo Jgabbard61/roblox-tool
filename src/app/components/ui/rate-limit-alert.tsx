@@ -9,6 +9,7 @@ export interface RateLimitAlertProps {
   onDismiss?: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function RateLimitAlert({ rateLimitStatus, onDismiss }: RateLimitAlertProps) {
   if (!rateLimitStatus.isRateLimited) {
     return null;
