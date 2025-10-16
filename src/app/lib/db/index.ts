@@ -1,6 +1,6 @@
 
 // Database connection and utility functions for PostgreSQL
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 // Database connection pool
 let pool: Pool | null = null;
@@ -31,7 +31,7 @@ export function getPool(): Pool {
  * Execute a query with automatic error handling
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: any[]
