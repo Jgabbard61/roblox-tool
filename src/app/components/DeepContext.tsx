@@ -40,6 +40,16 @@ interface ProfileData {
   };
 }
 
+interface Friend {
+  id: number;
+  name: string;
+  displayName: string;
+  hasVerifiedBadge: boolean;
+  avatarUrl: string;
+  isOnline?: boolean;
+  presenceType?: number;
+}
+
 interface DeepContextProps {
   userId: string;
   onClose: () => void;
@@ -48,8 +58,14 @@ interface DeepContextProps {
 export default function DeepContext({ userId, onClose }: DeepContextProps) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'activity' | 'flags'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'activity' | 'flags' | 'friends'>('overview');
   const [showMentions, setShowMentions] = useState(false);
+  
+  // Friends state
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsLoaded, setFriendsLoaded] = useState(false);
+  const [friendsError, setFriendsError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -73,6 +89,30 @@ export default function DeepContext({ userId, onClose }: DeepContextProps) {
     const years = now.getFullYear() - created.getFullYear();
     const months = now.getMonth() - created.getMonth();
     return `${years} years, ${months} months`;
+  };
+
+  const loadFriends = async () => {
+    if (friendsLoaded || friendsLoading) return;
+    
+    setFriendsLoading(true);
+    setFriendsError(null);
+    
+    try {
+      const response = await fetch(`/api/friends/${userId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load friends list');
+      }
+      
+      const data = await response.json();
+      setFriends(data.friends || []);
+      setFriendsLoaded(true);
+    } catch (error) {
+      console.error('Failed to load friends:', error);
+      setFriendsError(error instanceof Error ? error.message : 'Failed to load friends');
+    } finally {
+      setFriendsLoading(false);
+    }
   };
 
   const copySummary = () => {
@@ -224,6 +264,19 @@ export default function DeepContext({ userId, onClose }: DeepContextProps) {
               >
                 Linked Mentions
               </button>
+              <button
+                onClick={() => setActiveTab('friends')}
+                className={`px-6 py-3 font-medium transition ${
+                  activeTab === 'friends' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Friends
+                {profile && (
+                  <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-bold">
+                    {profile.counts.friends}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Tab Content */}
@@ -339,6 +392,119 @@ export default function DeepContext({ userId, onClose }: DeepContextProps) {
                             {kw.replace('flag:', '')}
                           </span>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'friends' && (
+                <div className="space-y-4">
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-bold text-lg">
+                        Friends List
+                        <span className="ml-3 text-sm font-normal text-gray-600">
+                          ({profile.counts.friends.toLocaleString()} total)
+                        </span>
+                      </h4>
+                    </div>
+
+                    {!friendsLoaded && !friendsLoading && (
+                      <div className="text-center py-8">
+                        <p className="text-gray-600 mb-4">
+                          Click the button below to load the friends list
+                        </p>
+                        <button
+                          onClick={loadFriends}
+                          className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition shadow-lg font-medium"
+                        >
+                          👥 Load Friends List
+                        </button>
+                      </div>
+                    )}
+
+                    {friendsLoading && (
+                      <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                        <p className="mt-4 text-gray-600">Loading friends...</p>
+                      </div>
+                    )}
+
+                    {friendsError && (
+                      <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded">
+                        <p className="font-bold text-red-800">Error Loading Friends</p>
+                        <p className="text-sm text-red-600 mt-1">{friendsError}</p>
+                        <button
+                          onClick={() => {
+                            setFriendsLoaded(false);
+                            setFriendsError(null);
+                            loadFriends();
+                          }}
+                          className="mt-3 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    )}
+
+                    {friendsLoaded && !friendsError && friends.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="text-lg">This user has no friends</p>
+                      </div>
+                    )}
+
+                    {friendsLoaded && !friendsError && friends.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {friends.map((friend) => (
+                            <div
+                              key={friend.id}
+                              className="bg-gray-50 hover:bg-gray-100 p-4 rounded-lg border border-gray-200 transition flex items-center space-x-4"
+                            >
+                              <div className="relative">
+                                <Image
+                                  src={friend.avatarUrl}
+                                  alt={friend.displayName}
+                                  width={56}
+                                  height={56}
+                                  className="rounded-full border-2 border-white shadow"
+                                />
+                                {friend.isOnline && (
+                                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2">
+                                  <p className="font-bold text-gray-800 truncate">
+                                    {friend.displayName}
+                                  </p>
+                                  {friend.hasVerifiedBadge && (
+                                    <span className="text-blue-500" title="Verified Badge">
+                                      ✓
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 truncate">
+                                  @{friend.name}
+                                </p>
+                                {friend.isOnline && (
+                                  <p className="text-xs text-green-600 font-medium mt-1">
+                                    🟢 Online
+                                  </p>
+                                )}
+                              </div>
+                              <a
+                                href={`https://www.roblox.com/users/${friend.id}/profile`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition"
+                              >
+                                View
+                              </a>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
