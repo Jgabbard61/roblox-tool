@@ -30,8 +30,10 @@ export function getPool(): Pool {
 /**
  * Execute a query with automatic error handling
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function query<T = any>(
   text: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: any[]
 ): Promise<QueryResult<T>> {
   const pool = getPool();
@@ -197,6 +199,7 @@ export async function logSearch(params: {
   robloxUserId?: number;
   robloxDisplayName?: string;
   hasVerifiedBadge?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   resultData?: any;
   resultCount?: number;
   resultStatus: 'success' | 'no_results' | 'error';

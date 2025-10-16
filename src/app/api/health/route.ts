@@ -25,7 +25,7 @@ export async function GET() {
     } else {
       health.services.cache = "not_configured";
     }
-  } catch (_error) {
+  } catch {
     health.services.cache = "unhealthy";
     health.status = "degraded";
   }
@@ -42,7 +42,7 @@ export async function GET() {
     
     clearTimeout(timeoutId);
     health.services.robloxApi = response.ok ? "healthy" : "degraded";
-  } catch (_error) {
+  } catch {
     health.services.robloxApi = "unhealthy";
     health.status = "degraded";
   }
