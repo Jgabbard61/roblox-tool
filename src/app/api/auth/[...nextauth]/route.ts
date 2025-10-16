@@ -1,10 +1,12 @@
 // FILE: src/app/api/auth/[...nextauth]/route.ts
-// This file handles all NextAuth authentication logic
+// This file handles all NextAuth authentication logic with database integration
 
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import * as bcrypt from 'bcrypt';
+import { getUserByUsername, updateUserLastLogin } from '@/app/lib/db';
 
-// NextAuth configuration
+// NextAuth configuration with database authentication
 const authOptions: NextAuthOptions = {
   // Configure authentication providers
   providers: [
@@ -15,30 +17,56 @@ const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // IMPORTANT: Replace this with your actual database check
-        // For now, using hardcoded credentials for testing
-        if (credentials?.username === 'admin' && credentials?.password === 'password') {
-          return {
-            id: '1',
-            name: 'Admin User',
-            email: 'admin@robloxverifier.com',
-            role: 'admin'
-          };
+        if (!credentials?.username || !credentials?.password) {
+          return null;
         }
-        
-        // You can add more users here or connect to a database
-        // Example with multiple users:
-        // if (credentials?.username === 'analyst' && credentials?.password === 'analyst123') {
-        //   return {
-        //     id: '2',
-        //     name: 'Analyst User',
-        //     email: 'analyst@robloxverifier.com',
-        //     role: 'analyst'
-        //   };
-        // }
-        
-        // Return null if authentication fails
-        return null;
+
+        try {
+          // Get user from database
+          const user = await getUserByUsername(credentials.username);
+          
+          if (!user) {
+            console.log('User not found:', credentials.username);
+            return null;
+          }
+
+          // Check if user is active
+          if (!user.is_active) {
+            console.log('User is inactive:', credentials.username);
+            return null;
+          }
+
+          // Check if customer is active (for non-super-admin users)
+          if (user.role !== 'SUPER_ADMIN' && !user.customer_is_active) {
+            console.log('Customer is inactive for user:', credentials.username);
+            return null;
+          }
+
+          // Verify password
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password_hash);
+          
+          if (!isPasswordValid) {
+            console.log('Invalid password for user:', credentials.username);
+            return null;
+          }
+
+          // Update last login timestamp
+          await updateUserLastLogin(user.id);
+
+          // Return user object for session
+          return {
+            id: user.id.toString(),
+            name: user.full_name || user.username,
+            email: user.email,
+            username: user.username,
+            role: user.role,
+            customerId: user.customer_id?.toString(),
+            customerName: user.customer_name,
+          };
+        } catch (error) {
+          console.error('Authentication error:', error);
+          return null;
+        }
       }
     })
   ],
@@ -66,7 +94,10 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.username = user.username;
         token.role = user.role;
+        token.customerId = user.customerId;
+        token.customerName = user.customerName;
       }
       return token;
     },
@@ -75,7 +106,10 @@ const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.username = token.username as string;
         session.user.role = token.role as string;
+        session.user.customerId = token.customerId as string | undefined;
+        session.user.customerName = token.customerName as string | undefined;
       }
       return session;
     }

@@ -1,5 +1,5 @@
 // app/api/search/route.tsx - Production Ready with All Protections
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import {
   fetchWithRateLimitDetection,
   RateLimitError,
@@ -14,6 +14,7 @@ import { withRetry } from "@/app/lib/utils/retry";
 import { robloxApiQueue } from "@/app/lib/utils/request-queue";
 import { robloxApiCircuitBreaker } from "@/app/lib/utils/circuit-breaker";
 import { metricsCollector } from "@/app/lib/utils/monitoring";
+import { logSearch } from "@/app/lib/db";
 
 // Define TypeScript interfaces for Roblox API responses
 interface RobloxUser {
@@ -42,9 +43,13 @@ interface ErrorResponse {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const start = Date.now();
   let fromCache = false;
+
+  // Get user info from headers (set by middleware)
+  const userId = request.headers.get('X-User-Id');
+  const customerId = request.headers.get('X-Customer-Id');
 
   try {
     const { searchParams } = new URL(request.url);
@@ -186,6 +191,35 @@ export async function GET(request: Request) {
       error: false,
       timestamp: Date.now(),
     });
+
+    // Log search to database (async, don't wait)
+    if (userId && customerId) {
+      const responseTime = Date.now() - start;
+      
+      // Determine search type (simple heuristic)
+      const searchType = /^\d+$/.test(keyword) ? 'userId' : 'username';
+      
+      // Get first result if exists
+      const firstResult = users.length > 0 ? users[0] : null;
+      
+      logSearch({
+        userId: parseInt(userId),
+        customerId: parseInt(customerId),
+        searchType,
+        searchQuery: keyword,
+        robloxUsername: firstResult?.name,
+        robloxUserId: firstResult?.id,
+        robloxDisplayName: firstResult?.displayName,
+        hasVerifiedBadge: firstResult?.hasVerifiedBadge,
+        resultData: { users, searchResults },
+        resultCount: users.length,
+        resultStatus: users.length > 0 ? 'success' : 'no_results',
+        responseTimeMs: responseTime,
+      }).catch(err => {
+        console.error('Failed to log search:', err);
+        // Don't fail the request if logging fails
+      });
+    }
 
     return NextResponse.json(responseData);
   } catch (error) {
