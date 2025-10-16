@@ -7,9 +7,12 @@ import { getUsersByCustomer } from '@/app/lib/db';
 // GET /api/admin/customers/[customerId]/users - Get all users for a customer
 export async function GET(
   request: NextRequest,
-  { params }: { params: { customerId: string } }
+  { params }: { params: Promise<{ customerId: string }> }
 ) {
   try {
+    // Await params in Next.js 15
+    const { customerId: customerIdParam } = await params;
+    
     // Verify admin access
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     
@@ -20,7 +23,7 @@ export async function GET(
       );
     }
 
-    const customerId = parseInt(params.customerId);
+    const customerId = parseInt(customerIdParam);
     
     if (isNaN(customerId)) {
       return NextResponse.json(
