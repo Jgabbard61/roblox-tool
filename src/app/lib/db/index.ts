@@ -31,7 +31,7 @@ export function getPool(): Pool {
  * Execute a query with automatic error handling
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function query<T extends QueryResultRow = any>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: any[]
