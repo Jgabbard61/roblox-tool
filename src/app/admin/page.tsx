@@ -73,7 +73,7 @@ export default function AdminDashboard() {
       } else {
         setError(data.error || 'Failed to fetch customers');
       }
-    } catch (err) {
+    } catch {
       setError('Network error');
     } finally {
       setLoading(false);
@@ -88,8 +88,8 @@ export default function AdminDashboard() {
       if (res.ok) {
         setSearchLogs(data.searches);
       }
-    } catch (err) {
-      console.error('Failed to fetch search logs:', err);
+    } catch (error) {
+      console.error('Failed to fetch search logs:', error);
     }
   };
 
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
       } else {
         setError(data.error || 'Failed to create customer');
       }
-    } catch (err) {
+    } catch {
       setError('Network error');
     } finally {
       setCreateLoading(false);
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
         const data = await res.json();
         alert(data.error || 'Failed to update customer status');
       }
-    } catch (err) {
+    } catch {
       alert('Network error');
     }
   };

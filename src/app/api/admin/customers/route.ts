@@ -88,11 +88,11 @@ export async function POST(request: NextRequest) {
         created_at: result.user.created_at,
       },
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating customer:', error);
     
-    // Handle unique constraint violation
-    if (error.code === '23505') {
+    // Handle unique constraint violation (PostgreSQL unique constraint error code)
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
       return NextResponse.json(
         { error: 'Customer name or username already exists' },
         { status: 409 }
