@@ -17,41 +17,64 @@ const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        // Validate credentials exist
         if (!credentials?.username || !credentials?.password) {
+          console.log('[Auth] Missing credentials');
           return null;
         }
 
         try {
-          // Get user from database
-          const user = await getUserByUsername(credentials.username);
+          console.log('[Auth] Attempting authentication for:', credentials.username);
+          
+          // Get user from database with error handling
+          let user;
+          try {
+            user = await getUserByUsername(credentials.username);
+          } catch (dbError) {
+            console.error('[Auth] Database query error:', dbError);
+            throw new Error('Database connection error. Please check your database configuration.');
+          }
           
           if (!user) {
-            console.log('User not found:', credentials.username);
+            console.log('[Auth] User not found:', credentials.username);
             return null;
           }
 
           // Check if user is active
           if (!user.is_active) {
-            console.log('User is inactive:', credentials.username);
+            console.log('[Auth] User is inactive:', credentials.username);
             return null;
           }
 
           // Check if customer is active (for non-super-admin users)
           if (user.role !== 'SUPER_ADMIN' && !user.customer_is_active) {
-            console.log('Customer is inactive for user:', credentials.username);
+            console.log('[Auth] Customer is inactive for user:', credentials.username);
             return null;
           }
 
-          // Verify password
-          const isPasswordValid = await bcrypt.compare(credentials.password, user.password_hash);
+          // Verify password with detailed logging
+          let isPasswordValid = false;
+          try {
+            isPasswordValid = await bcrypt.compare(credentials.password, user.password_hash);
+          } catch (bcryptError) {
+            console.error('[Auth] Password comparison error:', bcryptError);
+            return null;
+          }
           
           if (!isPasswordValid) {
-            console.log('Invalid password for user:', credentials.username);
+            console.log('[Auth] Invalid password for user:', credentials.username);
             return null;
           }
 
+          console.log('[Auth] Authentication successful for:', credentials.username);
+
           // Update last login timestamp
-          await updateUserLastLogin(user.id);
+          try {
+            await updateUserLastLogin(user.id);
+          } catch (updateError) {
+            // Log but don't fail auth if we can't update last login
+            console.error('[Auth] Failed to update last login:', updateError);
+          }
 
           // Return user object for session
           return {
@@ -64,8 +87,9 @@ const authOptions: NextAuthOptions = {
             customerName: user.customer_name,
           };
         } catch (error) {
-          console.error('Authentication error:', error);
-          return null;
+          console.error('[Auth] Authentication error:', error);
+          // Re-throw error to ensure it's properly handled
+          throw error;
         }
       }
     })

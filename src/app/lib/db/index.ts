@@ -10,6 +10,24 @@ let pool: Pool | null = null;
  */
 export function getPool(): Pool {
   if (!pool) {
+    // Validate DATABASE_URL exists
+    if (!process.env.DATABASE_URL) {
+      throw new Error(
+        'DATABASE_URL environment variable is not set. ' +
+        'Please configure your database connection string in Vercel environment variables.'
+      );
+    }
+
+    // Validate DATABASE_URL format
+    try {
+      new URL(process.env.DATABASE_URL);
+    } catch (urlError) {
+      throw new Error(
+        'DATABASE_URL is not a valid URL. ' +
+        'Expected format: postgresql://user:password@host:port/database'
+      );
+    }
+
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -19,9 +37,14 @@ export function getPool(): Pool {
     });
 
     pool.on('error', (err) => {
-      console.error('Unexpected error on idle database client', err);
-      process.exit(-1);
+      console.error('[Database] Unexpected error on idle client:', err);
+      // Don't exit process in production, just log the error
+      if (process.env.NODE_ENV === 'development') {
+        process.exit(-1);
+      }
     });
+
+    console.log('[Database] Connection pool initialized');
   }
 
   return pool;
@@ -36,7 +59,14 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: any[]
 ): Promise<QueryResult<T>> {
-  const pool = getPool();
+  let pool;
+  try {
+    pool = getPool();
+  } catch (poolError) {
+    console.error('[Database] Failed to get connection pool:', poolError);
+    throw poolError;
+  }
+
   const start = Date.now();
   
   try {
@@ -44,7 +74,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
     const duration = Date.now() - start;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('Query executed:', {
+      console.log('[Database] Query executed:', {
         text: text.substring(0, 100),
         duration: `${duration}ms`,
         rows: res.rowCount,
@@ -53,7 +83,13 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
     
     return res;
   } catch (error) {
-    console.error('Database query error:', error);
+    const duration = Date.now() - start;
+    console.error('[Database] Query error:', {
+      error,
+      query: text.substring(0, 200),
+      duration: `${duration}ms`,
+      params: params ? '(params provided)' : '(no params)',
+    });
     throw error;
   }
 }
