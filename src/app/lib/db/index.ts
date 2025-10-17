@@ -228,7 +228,7 @@ export async function createCustomerWithAdmin(
  */
 export async function logSearch(params: {
   userId: number;
-  customerId: number;
+  customerId: number | null;
   searchType: string;
   searchQuery: string;
   robloxUsername?: string;
@@ -250,7 +250,7 @@ export async function logSearch(params: {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
     [
       params.userId,
-      params.customerId,
+      params.customerId || null,
       params.searchType,
       params.searchQuery,
       params.robloxUsername || null,

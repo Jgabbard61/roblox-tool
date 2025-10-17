@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Log search to database (async, don't wait)
-    if (userId && customerId) {
+    if (userId) {
       const responseTime = Date.now() - start;
       
       // Determine search type (simple heuristic)
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
       
       logSearch({
         userId: parseInt(userId),
-        customerId: parseInt(customerId),
+        customerId: customerId && customerId !== 'null' ? parseInt(customerId) : null,
         searchType,
         searchQuery: keyword,
         robloxUsername: firstResult?.name,

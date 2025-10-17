@@ -56,9 +56,8 @@ export async function middleware(request: NextRequest) {
   if (token && pathname.startsWith('/api/')) {
     response.headers.set('X-User-Id', token.id as string);
     response.headers.set('X-User-Role', token.role as string);
-    if (token.customerId) {
-      response.headers.set('X-Customer-Id', token.customerId as string);
-    }
+    // Set customer ID even if null (for SUPER_ADMIN)
+    response.headers.set('X-Customer-Id', token.customerId as string || 'null');
   }
 
   // Log response time
