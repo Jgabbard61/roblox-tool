@@ -127,6 +127,11 @@ export default function DisplayNameResults({
                     width={80}
                     height={80}
                     className="rounded-lg shadow-md border-2 border-white"
+                    unoptimized
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiNFNUU3RUIiLz4KICA8Y2lyY2xlIGN4PSI0MCIgY3k9IjI4IiByPSIxMiIgZmlsbD0iIzlDQTNCOSIvPgogIDxwYXRoIGQ9Ik0yMCA2NEMyMCA1My41MDY2IDI4LjUwNjYgNDUgMzkgNDVINDFDNTEuNDkzNCA0NSA2MCA1My41MDY2IDYwIDY0VjgwSDIwVjY0WiIgZmlsbD0iIzlDQTNCOSIvPgo8L3N2Zz4K';
+                    }}
                   />
                 </div>
 

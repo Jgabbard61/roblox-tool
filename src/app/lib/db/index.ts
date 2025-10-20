@@ -230,6 +230,7 @@ export async function logSearch(params: {
   userId: number;
   customerId: number | null;
   searchType: string;
+  searchMode?: 'exact' | 'smart' | 'displayName'; // NEW: Track search mode
   searchQuery: string;
   robloxUsername?: string;
   robloxUserId?: number;
@@ -244,14 +245,15 @@ export async function logSearch(params: {
 }) {
   await query(
     `INSERT INTO search_history 
-      (user_id, customer_id, search_type, search_query, 
+      (user_id, customer_id, search_type, search_mode, search_query, 
        roblox_username, roblox_user_id, roblox_display_name, has_verified_badge,
        result_data, result_count, result_status, error_message, response_time_ms)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
     [
       params.userId,
       params.customerId || null,
       params.searchType,
+      params.searchMode || 'exact', // Default to 'exact' if not provided
       params.searchQuery,
       params.robloxUsername || null,
       params.robloxUserId || null,

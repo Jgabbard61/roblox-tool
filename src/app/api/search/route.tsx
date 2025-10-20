@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     const keyword = searchParams.get("keyword");
     const limit = searchParams.get("limit") || "10";
     const cursor = searchParams.get("cursor");
+    const searchMode = (searchParams.get("searchMode") || "smart") as 'smart' | 'displayName'; // Get search mode from query param
 
     // Validation
     if (!keyword) {
@@ -206,6 +207,7 @@ export async function GET(request: NextRequest) {
         userId: parseInt(userId),
         customerId: customerId && customerId !== 'null' ? parseInt(customerId) : null,
         searchType,
+        searchMode, // Pass the search mode (smart or displayName)
         searchQuery: keyword,
         robloxUsername: firstResult?.name,
         robloxUserId: firstResult?.id,

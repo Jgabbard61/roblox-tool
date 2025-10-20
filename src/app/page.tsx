@@ -144,7 +144,7 @@ function VerifierTool() {
           }
           
           try {
-            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
             
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
@@ -202,7 +202,7 @@ function VerifierTool() {
           }
           
           try {
-            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=20`);
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=20&searchMode=displayName`);
             
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
@@ -269,7 +269,7 @@ function VerifierTool() {
           user = data.data?.[0] || null;
         } else {
           // Fallback to search for other cases
-          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
+          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
           if (!response.ok) throw new Error('Roblox API error');
           const searchData = await response.json();
           const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
@@ -309,7 +309,7 @@ function VerifierTool() {
           });
         } else {
           // If no user found with exact match, try search
-          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10`);
+          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
           if (!response.ok) throw new Error('Roblox API error');
           const searchData = await response.json();
           const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
@@ -352,6 +352,11 @@ function VerifierTool() {
                 width={64}
                 height={64}
                 className="mt-2 rounded-full"
+                unoptimized
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIzMiIgZmlsbD0iI0U1RTdFQiIvPgogIDxjaXJjbGUgY3g9IjMyIiBjeT0iMjQiIHI9IjEwIiBmaWxsPSIjOUNBM0I5Ii8+CiAgPHBhdGggZD0iTTE2IDUyQzE2IDQzLjE2MzQgMjMuMTYzNCAzNiAzMiAzNkM0MC44MzY2IDM2IDQ4IDQzLjE2MzQgNDggNTJWNjRIMTZWNTJaIiBmaWxsPSIjOUNBM0I5Ii8+Cjwvc3ZnPgo=';
+                }}
               />
             )}
             <button
@@ -441,6 +446,19 @@ function VerifierTool() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="w-full max-w-4xl">
+        {/* Admin Dashboard Button for Super Admin */}
+        {session?.user?.role === 'SUPER_ADMIN' && (
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => router.push('/admin')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium shadow-md flex items-center gap-2"
+            >
+              <span>🔐</span>
+              <span>Admin Dashboard</span>
+            </button>
+          </div>
+        )}
+
         {!isBatchMode && (
           <ForensicMode
             isEnabled={forensicMode}
