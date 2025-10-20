@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS search_history (
     
     -- Search details
     search_type VARCHAR(50) NOT NULL CHECK (search_type IN ('username', 'displayName', 'userId', 'url', 'exact', 'smart')),
+    search_mode VARCHAR(50) NOT NULL DEFAULT 'exact' CHECK (search_mode IN ('exact', 'smart', 'displayName')),
     search_query VARCHAR(500) NOT NULL,
     
     -- Roblox user details (if found)
