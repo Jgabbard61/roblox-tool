@@ -14,7 +14,8 @@ export const authOptions: NextAuthOptions = {
       name: 'Credentials',
       credentials: {
         username: { label: "Username", type: "text", placeholder: "Enter your username" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        rememberMe: { label: "Remember Me", type: "text" }
       },
       async authorize(credentials) {
         // Validate credentials exist
@@ -25,6 +26,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           console.log('[Auth] Attempting authentication for:', credentials.username);
+          console.log('[Auth] Remember me:', credentials.rememberMe === 'true');
           
           // Get user from database with error handling
           let user;
@@ -85,6 +87,7 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             customerId: user.customer_id?.toString(),
             customerName: user.customer_name,
+            rememberMe: credentials.rememberMe === 'true',
           };
         } catch (error) {
           console.error('[Auth] Authentication error:', error);
@@ -109,7 +112,21 @@ export const authOptions: NextAuthOptions = {
   
   // Configure JWT
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // JWT expires after 30 days
+    maxAge: 30 * 24 * 60 * 60, // JWT expires after 30 days (max possible)
+  },
+  
+  // Configure cookies
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        // Don't set maxAge here - it will be set dynamically based on rememberMe
+      },
+    },
   },
   
   // Callbacks to customize behavior
@@ -122,6 +139,17 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.customerId = user.customerId;
         token.customerName = user.customerName;
+        token.rememberMe = user.rememberMe;
+        
+        // Set token expiration based on remember me preference
+        const now = Date.now();
+        if (user.rememberMe) {
+          // Remember me: 30 days
+          token.exp = Math.floor(now / 1000) + (30 * 24 * 60 * 60);
+        } else {
+          // Don't remember: 2 hours (session expires when browser closes)
+          token.exp = Math.floor(now / 1000) + (2 * 60 * 60);
+        }
       }
       return token;
     },
