@@ -8,6 +8,7 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -16,10 +17,19 @@ export default function SignIn() {
     setError(null);
 
     const form = e.currentTarget;
+    
+    // Store remember me preference in localStorage for session management
+    if (rememberMe) {
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('rememberMe');
+    }
+    
     const res = await signIn('credentials', {
       redirect: false,
       username: form.username.value,
       password: form.password.value,
+      rememberMe: rememberMe.toString(),
     });
 
     if (res?.error) {
@@ -96,6 +106,21 @@ export default function SignIn() {
                   )}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center">
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
+                Remember me for 30 days
+              </label>
             </div>
 
             {/* Error Message */}

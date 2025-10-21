@@ -17,6 +17,7 @@ declare module "next-auth" {
     role: string
     customerId?: string
     customerName?: string
+    rememberMe?: boolean
   }
 }
 
@@ -26,5 +27,7 @@ declare module "next-auth/jwt" {
     role: string
     customerId?: string
     customerName?: string
+    rememberMe?: boolean
+    exp?: number
   }
 }
