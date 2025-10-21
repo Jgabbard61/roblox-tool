@@ -84,6 +84,7 @@ function VerifierTool() {
   const [displayNameUsers, setDisplayNameUsers] = useState<UserResult[]>([]);
   const [showNoResultsModal, setShowNoResultsModal] = useState<boolean>(false);
   const [noResultsQuery, setNoResultsQuery] = useState<string>('');
+  const [customerLogo, setCustomerLogo] = useState<string | null>(null);
 
   // Cooldown hooks for Smart and Display Name modes
   const smartCooldown = useCooldown({ key: 'smart_search', durationSeconds: 30 });
@@ -94,6 +95,27 @@ function VerifierTool() {
       router.push('/auth/signin');
     }
   }, [status, router]);
+
+  // Fetch customer logo
+  useEffect(() => {
+    const fetchCustomerLogo = async () => {
+      if (session?.user?.customerId) {
+        try {
+          const res = await fetch(`/api/customer-logo/${session.user.customerId}`);
+          if (res.ok) {
+            const data = await res.json();
+            setCustomerLogo(data.logoUrl);
+          }
+        } catch (error) {
+          console.error('Failed to fetch customer logo:', error);
+        }
+      }
+    };
+
+    if (session) {
+      fetchCustomerLogo();
+    }
+  }, [session]);
 
   const handleSubmit = async (e: React.FormEvent, batchInputs: string[] = []) => {
     e.preventDefault();
@@ -316,6 +338,11 @@ function VerifierTool() {
           
           if (!isCurrentlyBatchMode) {
             setScoredCandidates(candidates);
+            // Show modal for exact search that found no exact match
+            if (searchMode === 'exact') {
+              setNoResultsQuery(parsed.value);
+              setShowNoResultsModal(true);
+            }
           }
           
           outputs.push({
@@ -469,6 +496,18 @@ function VerifierTool() {
         )}
 
         <div className="rounded-lg bg-white p-8 shadow-xl">
+          {/* Customer Logo */}
+          {customerLogo && (
+            <div className="flex justify-center mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={customerLogo}
+                alt="Customer Logo"
+                className="max-h-16 object-contain"
+              />
+            </div>
+          )}
+
           <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">
             Roblox Verifier Tool
           </h1>

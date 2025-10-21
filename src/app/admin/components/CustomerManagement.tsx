@@ -12,6 +12,7 @@ interface Customer {
   total_searches: number;
   contact_email?: string;
   max_users?: number;
+  logo_url?: string;
 }
 
 export default function CustomerManagement() {
@@ -20,9 +21,13 @@ export default function CustomerManagement() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showLogoModal, setShowLogoModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const [newCustomer, setNewCustomer] = useState({
     customerName: '',
@@ -196,6 +201,105 @@ export default function CustomerManagement() {
     setShowEditModal(true);
   };
 
+  const openLogoModal = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setLogoFile(null);
+    setLogoPreview(customer.logo_url || null);
+    setShowLogoModal(true);
+  };
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Invalid file type. Please upload a .jpg, .jpeg, .png, .gif, or .bmp file.');
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File too large. Maximum size is 5MB.');
+        return;
+      }
+
+      setLogoFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLogoUpload = async () => {
+    if (!logoFile || !selectedCustomer) return;
+
+    setUploadingLogo(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('logo', logoFile);
+
+      const res = await fetch(`/api/admin/customers/${selectedCustomer.id}/logo`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('✅ Logo uploaded successfully!');
+        setShowLogoModal(false);
+        setLogoFile(null);
+        setLogoPreview(null);
+        fetchCustomers();
+      } else {
+        setError(data.error || 'Failed to upload logo');
+      }
+    } catch {
+      setError('Network error');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    if (!selectedCustomer) return;
+
+    const confirmed = confirm('Are you sure you want to delete this logo?');
+    if (!confirmed) return;
+
+    setUploadingLogo(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/admin/customers/${selectedCustomer.id}/logo`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('✅ Logo deleted successfully!');
+        setShowLogoModal(false);
+        setLogoFile(null);
+        setLogoPreview(null);
+        fetchCustomers();
+      } else {
+        setError(data.error || 'Failed to delete logo');
+      }
+    } catch {
+      setError('Network error');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -289,6 +393,12 @@ export default function CustomerManagement() {
                       className="text-blue-600 hover:text-blue-900"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => openLogoModal(customer)}
+                      className="text-purple-600 hover:text-purple-900"
+                    >
+                      Logo
                     </button>
                     <button
                       onClick={() => toggleCustomerStatus(customer.id, customer.is_active)}
@@ -496,6 +606,101 @@ export default function CustomerManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Logo Upload Modal */}
+      {showLogoModal && selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">
+                {selectedCustomer.logo_url ? 'Update' : 'Upload'} Customer Logo
+              </h3>
+              <button
+                onClick={() => setShowLogoModal(false)}
+                className="text-white hover:text-gray-200 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-gray-600 mb-4">
+                Customer: <span className="font-semibold">{selectedCustomer.name}</span>
+              </div>
+
+              {/* Logo Preview */}
+              {logoPreview && (
+                <div className="flex justify-center mb-4">
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="max-w-full max-h-48 rounded-lg shadow-md border border-gray-300"
+                    />
+                    {selectedCustomer.logo_url && !logoFile && (
+                      <span className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                        Current
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Logo Image
+                </label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.gif,.bmp"
+                  onChange={handleLogoFileChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Allowed: .jpg, .jpeg, .png, .gif, .bmp (max 5MB)
+                </p>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">💡 Tip:</span> The logo will be displayed on the home page for this customer&apos;s users only (white-label experience).
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                {selectedCustomer.logo_url && (
+                  <button
+                    type="button"
+                    onClick={handleLogoDelete}
+                    disabled={uploadingLogo}
+                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all disabled:opacity-50"
+                  >
+                    {uploadingLogo ? 'Deleting...' : 'Delete Logo'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogoUpload}
+                  disabled={!logoFile || uploadingLogo}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50"
+                >
+                  {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -177,6 +177,11 @@ export default function DeepContext({ userId, onClose }: DeepContextProps) {
                 width={128} 
                 height={128} 
                 className="rounded-full mx-auto mb-4 border-4 border-white shadow-lg"
+                unoptimized
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGNpcmNsZSBjeD0iNjQiIGN5PSI2NCIgcj0iNjQiIGZpbGw9IiNFNUU3RUIiLz4KICA8Y2lyY2xlIGN4PSI2NCIgY3k9IjQ4IiByPSIyMCIgZmlsbD0iIzlDQTNCOSIvPgogIDxwYXRoIGQ9Ik0zMiAxMDRDMzIgODYuMzI2OCA0Ni4zMjY4IDcyIDY0IDcyQzgxLjY3MzIgNzIgOTYgODYuMzI2OCA5NiAxMDRWMTI4SDMyVjEwNFoiIGZpbGw9IiM5Q0EzQjkiLz4KPC9zdmc+Cg==';
+                }}
               />
               <h3 className="text-2xl font-bold text-gray-800">{profile.user.displayName}</h3>
               <p className="text-gray-600">@{profile.user.username}</p>
@@ -469,6 +474,11 @@ export default function DeepContext({ userId, onClose }: DeepContextProps) {
                                   width={56}
                                   height={56}
                                   className="rounded-full border-2 border-white shadow"
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHZpZXdCb3g9IjAgMCA1NiA1NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8Y2lyY2xlIGN4PSIyOCIgY3k9IjI4IiByPSIyOCIgZmlsbD0iI0U1RTdFQiIvPgogIDxjaXJjbGUgY3g9IjI4IiBjeT0iMjEiIHI9IjkiIGZpbGw9IiM5Q0EzQjkiLz4KICA8cGF0aCBkPSJNMTQgNDZDMTQgMzcuNzE1NyAyMC43MTU3IDMxIDI4IDMxQzM1LjI4NDMgMzEgNDIgMzcuNzE1NyA0MiA0NlY1NkgxNFY0NloiIGZpbGw9IiM5Q0EzQjkiLz4KPC9zdmc+Cg==';
+                                  }}
                                 />
                                 {friend.isOnline && (
                                   <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
