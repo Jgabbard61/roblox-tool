@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface User {
   id: number;
@@ -57,12 +57,7 @@ export default function UserManagement() {
 
   const [newPassword, setNewPassword] = useState('');
 
-  useEffect(() => {
-    fetchUsers();
-    fetchCustomers();
-  }, [filters]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -84,7 +79,12 @@ export default function UserManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchCustomers();
+  }, [fetchUsers]);
 
   const fetchCustomers = async () => {
     try {

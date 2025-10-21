@@ -21,7 +21,7 @@ export function getPool(): Pool {
     // Validate DATABASE_URL format
     try {
       new URL(process.env.DATABASE_URL);
-    } catch (urlError) {
+    } catch {
       throw new Error(
         'DATABASE_URL is not a valid URL. ' +
         'Expected format: postgresql://user:password@host:port/database'
@@ -53,7 +53,6 @@ export function getPool(): Pool {
 /**
  * Execute a query with automatic error handling
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
