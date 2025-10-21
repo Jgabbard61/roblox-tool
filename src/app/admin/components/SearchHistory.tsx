@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface SearchRecord {
   id: number;
@@ -47,15 +47,7 @@ export default function SearchHistory() {
     search: '',
   });
 
-  useEffect(() => {
-    fetchSearchHistory();
-  }, [filters, pagination.page]);
-
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  const fetchSearchHistory = async () => {
+  const fetchSearchHistory = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -84,7 +76,15 @@ export default function SearchHistory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    fetchSearchHistory();
+  }, [fetchSearchHistory]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   const fetchCustomers = async () => {
     try {
