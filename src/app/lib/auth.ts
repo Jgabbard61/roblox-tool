@@ -115,20 +115,6 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // JWT expires after 30 days (max possible)
   },
   
-  // Configure cookies
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        // Don't set maxAge here - it will be set dynamically based on rememberMe
-      },
-    },
-  },
-  
   // Callbacks to customize behavior
   callbacks: {
     // This callback runs when JWT is created or updated
