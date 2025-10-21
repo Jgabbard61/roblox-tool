@@ -10,6 +10,7 @@
     "init-db": "tsx scripts/init-db.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.76.0",
     "@types/bcrypt": "^6.0.0",
     "@types/pg": "^8.15.5",
     "autoprefixer": "^10.4.21",

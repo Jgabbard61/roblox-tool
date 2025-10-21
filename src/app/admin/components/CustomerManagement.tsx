@@ -253,16 +253,22 @@ export default function CustomerManagement() {
       const data = await res.json();
 
       if (res.ok) {
-        alert('✅ Logo uploaded successfully!');
+        alert(`✅ Logo uploaded successfully!\n\n${data.message || 'Logo has been stored in cloud storage.'}`);
         setShowLogoModal(false);
         setLogoFile(null);
         setLogoPreview(null);
         fetchCustomers();
       } else {
-        setError(data.error || 'Failed to upload logo');
+        const errorMsg = data.details 
+          ? `${data.error}\n\nDetails: ${data.details}`
+          : data.error || 'Failed to upload logo';
+        setError(errorMsg);
+        alert(`❌ Upload failed\n\n${errorMsg}`);
       }
-    } catch {
-      setError('Network error');
+    } catch (err) {
+      const errorMsg = 'Network error - please check your connection and try again';
+      setError(errorMsg);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setUploadingLogo(false);
     }
@@ -285,16 +291,22 @@ export default function CustomerManagement() {
       const data = await res.json();
 
       if (res.ok) {
-        alert('✅ Logo deleted successfully!');
+        alert(`✅ Logo deleted successfully!\n\n${data.message || 'Logo has been removed from cloud storage.'}`);
         setShowLogoModal(false);
         setLogoFile(null);
         setLogoPreview(null);
         fetchCustomers();
       } else {
-        setError(data.error || 'Failed to delete logo');
+        const errorMsg = data.details 
+          ? `${data.error}\n\nDetails: ${data.details}`
+          : data.error || 'Failed to delete logo';
+        setError(errorMsg);
+        alert(`❌ Delete failed\n\n${errorMsg}`);
       }
-    } catch {
-      setError('Network error');
+    } catch (err) {
+      const errorMsg = 'Network error - please check your connection and try again';
+      setError(errorMsg);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setUploadingLogo(false);
     }
