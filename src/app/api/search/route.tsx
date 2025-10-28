@@ -1,4 +1,4 @@
-// app/api/search/route.tsx - Production Ready with All Protections
+// app/api/search/route.tsx - Production Ready with All Protections + Credit System
 import { NextResponse, NextRequest } from "next/server";
 import {
   fetchWithRateLimitDetection,
@@ -15,6 +15,11 @@ import { robloxApiQueue } from "@/app/lib/utils/request-queue";
 import { robloxApiCircuitBreaker } from "@/app/lib/utils/circuit-breaker";
 import { metricsCollector } from "@/app/lib/utils/monitoring";
 import { logSearch } from "@/app/lib/db";
+import { 
+  checkSufficientCredits, 
+  deductCredits, 
+  getCustomerCredits 
+} from "@/app/lib/credits";
 
 // Define TypeScript interfaces for Roblox API responses
 interface RobloxUser {
@@ -71,6 +76,31 @@ export async function GET(request: NextRequest) {
         { error: "Keyword must be at least 3 characters" } as ErrorResponse,
         { status: 400 }
       );
+    }
+
+    // ============================================
+    // CREDIT CHECK (for non-SUPER_ADMIN users)
+    // ============================================
+    if (customerId && customerId !== 'null') {
+      const customerIdInt = parseInt(customerId);
+      
+      // Check if customer has sufficient credits (≥1)
+      const hasSufficientCredits = await checkSufficientCredits(customerIdInt, 1);
+      
+      if (!hasSufficientCredits) {
+        // Get current balance for error message
+        const credits = await getCustomerCredits(customerIdInt);
+        const currentBalance = credits?.balance || 0;
+        
+        return NextResponse.json(
+          { 
+            error: "insufficient_credits",
+            message: `Insufficient credits. You have ${currentBalance} credits. Please purchase more credits to continue.`,
+            currentBalance,
+          } as ErrorResponse,
+          { status: 402 } // 402 Payment Required
+        );
+      }
     }
 
     // Generate cache key
@@ -193,7 +223,7 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
     });
 
-    // Log search to database (async, don't wait)
+    // Log search to database and handle credit deduction
     if (userId) {
       const responseTime = Date.now() - start;
       
@@ -203,7 +233,8 @@ export async function GET(request: NextRequest) {
       // Get first result if exists
       const firstResult = users.length > 0 ? users[0] : null;
       
-      logSearch({
+      // Log search first (get search history ID)
+      const searchLogPromise = logSearch({
         userId: parseInt(userId),
         customerId: customerId && customerId !== 'null' ? parseInt(customerId) : null,
         searchType,
@@ -219,8 +250,55 @@ export async function GET(request: NextRequest) {
         responseTimeMs: responseTime,
       }).catch(err => {
         console.error('Failed to log search:', err);
-        // Don't fail the request if logging fails
+        return null;
       });
+
+      // ============================================
+      // CREDIT DEDUCTION (for non-SUPER_ADMIN users)
+      // ============================================
+      if (customerId && customerId !== 'null') {
+        const customerIdInt = parseInt(customerId);
+        const userIdInt = parseInt(userId);
+        
+        // Determine if we should deduct credits
+        let shouldDeductCredits = false;
+        let deductionReason = '';
+        
+        if (searchMode === 'smart' || searchMode === 'displayName') {
+          // Smart Match and Display Name: ALWAYS deduct 1 credit
+          shouldDeductCredits = true;
+          deductionReason = `${searchMode === 'smart' ? 'Smart' : 'Display Name'} search for "${keyword}"`;
+        } else {
+          // Exact Match: Only deduct if results found
+          if (users.length > 0) {
+            shouldDeductCredits = true;
+            deductionReason = `Exact search for "${keyword}" (results found)`;
+          }
+          // If no results, it's FREE (shouldDeductCredits = false)
+        }
+
+        // Deduct credits if applicable (async, don't wait)
+        if (shouldDeductCredits) {
+          // Wait for search log to complete to get search history ID
+          searchLogPromise.then(searchLog => {
+            const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
+            
+            deductCredits({
+              customerId: customerIdInt,
+              userId: userIdInt,
+              amount: 1,
+              searchHistoryId,
+              description: deductionReason,
+            }).catch(err => {
+              console.error('Failed to deduct credits:', err);
+              // Don't fail the request if credit deduction fails
+              // This is a critical error that should be monitored
+            });
+          });
+        } else {
+          console.log(`[Credits] No deduction for exact search with no results: "${keyword}"`);
+        }
+      }
     }
 
     return NextResponse.json(responseData);
