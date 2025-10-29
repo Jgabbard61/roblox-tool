@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CreditCard, TrendingUp, TrendingDown, Calendar, DollarSign, AlertTriangle, RefreshCw, ShoppingCart } from 'lucide-react';
@@ -32,19 +32,11 @@ interface CreditPackage {
   is_active: boolean;
 }
 
-export default function Dashboard() {
-  const { data: session, status } = useSession();
+// Component to handle payment status from search params
+function PaymentStatusHandler({ onFetchData }: { onFetchData: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [balance, setBalance] = useState<CreditBalance | null>(null);
-  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
-  const [packages, setPackages] = useState<CreditPackage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [purchasingPackageId, setPurchasingPackageId] = useState<number | null>(null);
-
-  // Handle payment status from query params
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
     if (paymentStatus === 'success') {
@@ -52,13 +44,27 @@ export default function Dashboard() {
       // Remove query param
       router.replace('/dashboard');
       // Refresh data
-      fetchData();
+      onFetchData();
     } else if (paymentStatus === 'cancelled') {
       toast.error('Payment was cancelled. You can try again anytime.');
       // Remove query param
       router.replace('/dashboard');
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, onFetchData]);
+
+  return null;
+}
+
+function DashboardContent() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  const [balance, setBalance] = useState<CreditBalance | null>(null);
+  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
+  const [packages, setPackages] = useState<CreditPackage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [purchasingPackageId, setPurchasingPackageId] = useState<number | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -192,28 +198,33 @@ export default function Dashboard() {
   const showLowBalanceAlert = balance && balance.balance < 10 && balance.balance > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Welcome back, {session?.user?.name || session?.user?.username}!
-              </p>
+    <>
+      <Suspense fallback={null}>
+        <PaymentStatusHandler onFetchData={fetchData} />
+      </Suspense>
+      
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Welcome back, {session?.user?.name || session?.user?.username}!
+                </p>
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
           </div>
         </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Low Balance Alert */}
@@ -405,5 +416,23 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    </>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }
