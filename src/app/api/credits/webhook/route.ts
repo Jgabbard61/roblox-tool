@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       // Get customer and user info
       const customerResult = await query(
         `SELECT c.id, c.name, c.contact_email,
-                u.id as user_id, u.email, u.username, u.full_name, u.password_hash
+                u.id as user_id, u.email, u.username, u.full_name, u.password_hash, u.email_verified
          FROM customers c
          LEFT JOIN users u ON u.customer_id = c.id AND u.id = $2
          WHERE c.id = $1`,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
 
       const customer = customerResult.rows[0];
-      const isFirstPurchase = !customer.password_hash; // No password means new customer
+      const isFirstPurchase = userId && customer.user_id; // New: first purchase for registered user
 
       // Initialize credit account if doesn't exist
       await initializeCustomerCredits(customerId);
@@ -126,41 +126,44 @@ export async function POST(request: NextRequest) {
 
       // Send emails
       try {
-        if (isFirstPurchase) {
+        if (isFirstPurchase && customer.user_id) {
+          // New flow: User registered from lander, send welcome email with login link
+          await sendWelcomeEmail({
+            email: customer.email || customer.contact_email,
+            customerName: customer.full_name || customer.name,
+            username: customer.username,
+            tempPassword: '', // Empty since user set their own password during registration
+            credits,
+            loginUrl: `${process.env.APP_URL || process.env.NEXTAUTH_URL}/auth/signin`,
+          });
+        } else if (!customer.user_id) {
+          // Old flow: Legacy checkout without registration (shouldn't happen with new flow)
           // Generate temporary password
           const tempPassword = generateTempPassword();
           const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-          // Create user account if doesn't exist
-          if (!customer.user_id) {
-            const username = generateUsername(customer.name);
-            await query(
-              `INSERT INTO users (username, password_hash, role, customer_id, email, is_active)
-               VALUES ($1, $2, 'CUSTOMER_ADMIN', $3, $4, true)`,
-              [username, passwordHash, customerId, customer.email || customer.contact_email]
-            );
-          } else {
-            // Update existing user password
-            await query(
-              'UPDATE users SET password_hash = $1 WHERE id = $2',
-              [passwordHash, customer.user_id]
-            );
-          }
+          // Create user account
+          const username = generateUsername(customer.name);
+          await query(
+            `INSERT INTO users (username, password_hash, role, customer_id, email, is_active)
+             VALUES ($1, $2, 'CUSTOMER_ADMIN', $3, $4, true)`,
+            [username, passwordHash, customerId, customer.email || customer.contact_email]
+          );
 
-          // Send welcome email
+          // Send welcome email with temp password
           await sendWelcomeEmail({
             email: customer.email || customer.contact_email,
             customerName: customer.name,
-            username: customer.username || generateUsername(customer.name),
+            username,
             tempPassword,
             credits,
             loginUrl: `${process.env.APP_URL || process.env.NEXTAUTH_URL}/auth/signin`,
           });
         } else {
-          // Send purchase confirmation email
+          // Subsequent purchases: Send purchase confirmation email
           await sendPurchaseConfirmationEmail({
             email: customer.email || customer.contact_email,
-            customerName: customer.name,
+            customerName: customer.full_name || customer.name,
             credits,
             amountPaid: (session.amount_total || 0) / 100, // Convert cents to dollars
             newBalance: transaction.balance_after,

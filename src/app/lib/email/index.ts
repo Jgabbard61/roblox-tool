@@ -19,6 +19,135 @@ const FROM_EMAIL = 'VerifyLens <noreply@verifylens.com>';
 const FROM_NAME = 'VerifyLens';
 
 // ============================================
+// EMAIL VERIFICATION EMAIL
+// ============================================
+
+export interface VerificationEmailParams {
+  email: string;
+  firstName: string;
+  verificationUrl: string;
+}
+
+export async function sendVerificationEmail(params: VerificationEmailParams) {
+  const { email, firstName, verificationUrl } = params;
+
+  const subject = 'Verify Your VerifyLens Email Address';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Your Email</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f7f9fc;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7f9fc; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700;">Verify Your Email</h1>
+              <p style="margin: 10px 0 0 0; color: #f0f0f0; font-size: 16px;">Complete your VerifyLens registration</p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
+                Hi <strong>${firstName}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
+                Thank you for registering with VerifyLens! To complete your registration and start using your account, please verify your email address by clicking the button below.
+              </p>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${verificationUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
+                      Verify Email Address
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Alternative Link -->
+              <p style="margin: 20px 0; color: #718096; font-size: 14px; line-height: 1.6; text-align: center;">
+                Or copy and paste this link into your browser:
+              </p>
+              <p style="margin: 0 0 20px 0; color: #667eea; font-size: 13px; word-break: break-all; background-color: #f7fafc; padding: 12px; border-radius: 6px; font-family: monospace;">
+                ${verificationUrl}
+              </p>
+
+              <!-- Expiry Notice -->
+              <div style="margin: 30px 0; padding: 20px; background-color: #fff5f5; border-left: 4px solid #fc8181; border-radius: 4px;">
+                <p style="margin: 0; color: #742a2a; font-size: 14px; line-height: 1.6;">
+                  <strong>⏰ Important:</strong> This verification link will expire in 24 hours. If it expires, you'll need to request a new verification email.
+                </p>
+              </div>
+
+              <!-- Security Notice -->
+              <div style="margin: 30px 0; padding: 20px; background-color: #ebf8ff; border-left: 4px solid #4299e1; border-radius: 4px;">
+                <p style="margin: 0; color: #2c5282; font-size: 14px; line-height: 1.6;">
+                  <strong>🔒 Security Notice:</strong> If you didn't create an account with VerifyLens, please ignore this email or contact our support team.
+                </p>
+              </div>
+
+              <!-- Support -->
+              <p style="margin: 30px 0 0 0; color: #718096; font-size: 14px; line-height: 1.6;">
+                Need help? Contact us at <a href="mailto:support@verifylens.com" style="color: #667eea; text-decoration: none;">support@verifylens.com</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f7fafc; padding: 30px; text-align: center; border-radius: 0 0 12px 12px;">
+              <p style="margin: 0; color: #a0aec0; font-size: 13px;">
+                © ${new Date().getFullYear()} VerifyLens. All rights reserved.
+              </p>
+              <p style="margin: 10px 0 0 0; color: #a0aec0; font-size: 13px;">
+                Professional Roblox User Verification for Legal Professionals
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject,
+      html,
+    });
+
+    if (error) {
+      console.error('[Email] Failed to send verification email:', error);
+      throw error;
+    }
+
+    console.log('[Email] Verification email sent:', data);
+    return data;
+  } catch (error) {
+    console.error('[Email] Error sending verification email:', error);
+    throw error;
+  }
+}
+
+// ============================================
 // WELCOME EMAIL
 // ============================================
 
@@ -79,6 +208,7 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
                       <strong>Username:</strong> <span style="color: #667eea; font-family: monospace;">${username}</span>
                     </p>
                     
+                    ${tempPassword ? `
                     <p style="margin: 8px 0; color: #4a5568; font-size: 15px;">
                       <strong>Temporary Password:</strong> <span style="color: #667eea; font-family: monospace;">${tempPassword}</span>
                     </p>
@@ -86,6 +216,11 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
                     <p style="margin: 16px 0 0 0; color: #718096; font-size: 13px; font-style: italic;">
                       ⚠️ Please change your password after first login for security
                     </p>
+                    ` : `
+                    <p style="margin: 16px 0 0 0; color: #718096; font-size: 13px; font-style: italic;">
+                      🔒 Use the password you set during registration to log in
+                    </p>
+                    `}
                   </td>
                 </tr>
               </table>
