@@ -13,6 +13,8 @@ import ForensicMode from './components/ForensicMode';
 import SearchModeSelector, { SearchMode } from './components/SearchModeSelector';
 import DisplayNameResults from './components/DisplayNameResults';
 import NoResultsModal from './components/NoResultsModal';
+import CreditHeader from './components/CreditHeader';
+import InsufficientCreditsModal from './components/InsufficientCreditsModal';
 import { useCooldown } from './hooks/useCooldown';
 import { getTopSuggestions } from './lib/ranking';
 
@@ -85,6 +87,11 @@ function VerifierTool() {
   const [showNoResultsModal, setShowNoResultsModal] = useState<boolean>(false);
   const [noResultsQuery, setNoResultsQuery] = useState<string>('');
   const [customerLogo, setCustomerLogo] = useState<string | null>(null);
+  
+  // Credit system state
+  const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] = useState<boolean>(false);
+  const [requiredCredits, setRequiredCredits] = useState<number>(0);
 
   // Cooldown hooks for Smart and Display Name modes
   const smartCooldown = useCooldown({ key: 'smart_search', durationSeconds: 30 });
@@ -117,8 +124,59 @@ function VerifierTool() {
     }
   }, [session]);
 
+  // Fetch credit balance
+  useEffect(() => {
+    const fetchCreditBalance = async () => {
+      if (session?.user?.customerId) {
+        try {
+          const res = await fetch('/api/credits/balance');
+          if (res.ok) {
+            const data = await res.json();
+            setCreditBalance(data.balance);
+          }
+        } catch (error) {
+          console.error('Failed to fetch credit balance:', error);
+        }
+      }
+    };
+
+    if (session) {
+      fetchCreditBalance();
+    }
+  }, [session]);
+
+  // Helper function to calculate credit cost based on search mode
+  const calculateCreditCost = (mode: SearchMode): number => {
+    if (mode === 'exact') return 1; // 1 credit, but FREE if no results
+    if (mode === 'smart') return 2; // 2 credits
+    if (mode === 'displayName') return 1; // 1 credit
+    return 1;
+  };
+
+  // Helper function to check if user has sufficient credits
+  const checkCredits = (requiredCredits: number): boolean => {
+    // Super admins don't need credits
+    if (session?.user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+    
+    // Check customer credit balance
+    return creditBalance >= requiredCredits;
+  };
+
   const handleSubmit = async (e: React.FormEvent, batchInputs: string[] = []) => {
     e.preventDefault();
+    
+    // Check credits before proceeding (skip for super admins)
+    if (session?.user?.customerId) {
+      const creditCost = calculateCreditCost(searchMode);
+      if (!checkCredits(creditCost)) {
+        setRequiredCredits(creditCost);
+        setShowInsufficientCreditsModal(true);
+        return;
+      }
+    }
+    
     setLoading(true);
     setResult(null);
     setBatchResults([]);
@@ -473,9 +531,10 @@ function VerifierTool() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="w-full max-w-4xl">
-        {/* Admin Dashboard Button for Super Admin */}
-        {session?.user?.role === 'SUPER_ADMIN' && (
-          <div className="mb-4 flex justify-end">
+        {/* Header with Admin Dashboard and Credits */}
+        <div className="mb-4 flex justify-between items-center">
+          {/* Admin Dashboard Button for Super Admin */}
+          {session?.user?.role === 'SUPER_ADMIN' && (
             <button
               onClick={() => router.push('/admin')}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium shadow-md flex items-center gap-2"
@@ -483,8 +542,13 @@ function VerifierTool() {
               <span>🔐</span>
               <span>Admin Dashboard</span>
             </button>
-          </div>
-        )}
+          )}
+
+          {/* Credit Balance - Only for customers (not super admin) */}
+          {session?.user?.customerId && (
+            <CreditHeader />
+          )}
+        </div>
 
         {!isBatchMode && (
           <ForensicMode
@@ -658,6 +722,14 @@ function VerifierTool() {
         onClose={() => setShowNoResultsModal(false)}
         onTrySmartSearch={handleTrySmartSearch}
         searchQuery={noResultsQuery}
+      />
+
+      <InsufficientCreditsModal
+        isOpen={showInsufficientCreditsModal}
+        onClose={() => setShowInsufficientCreditsModal(false)}
+        requiredCredits={requiredCredits}
+        currentBalance={creditBalance}
+        searchMode={searchMode}
       />
     </main>
   );
