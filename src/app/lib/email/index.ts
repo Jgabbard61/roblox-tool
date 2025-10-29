@@ -25,11 +25,12 @@ const FROM_NAME = 'VerifyLens';
 export interface VerificationEmailParams {
   email: string;
   firstName: string;
+  username: string;
   verificationUrl: string;
 }
 
 export async function sendVerificationEmail(params: VerificationEmailParams) {
-  const { email, firstName, verificationUrl } = params;
+  const { email, firstName, username, verificationUrl } = params;
 
   const subject = 'Verify Your VerifyLens Email Address';
 
@@ -65,6 +66,19 @@ export async function sendVerificationEmail(params: VerificationEmailParams) {
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
                 Thank you for registering with VerifyLens! To complete your registration and start using your account, please verify your email address by clicking the button below.
               </p>
+
+              <!-- Username Info Box -->
+              <div style="margin: 20px 0 30px 0; padding: 20px; background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 4px;">
+                <p style="margin: 0 0 8px 0; color: #14532d; font-size: 14px; font-weight: 600;">
+                  ✅ Your Login Username
+                </p>
+                <p style="margin: 0; color: #15803d; font-size: 18px; font-weight: 700; font-family: monospace;">
+                  ${username}
+                </p>
+                <p style="margin: 8px 0 0 0; color: #166534; font-size: 12px; line-height: 1.4;">
+                  Use this username to log in to your VerifyLens account at <a href="https://www.verifylens.com" style="color: #15803d; text-decoration: none; font-weight: 600;">www.verifylens.com</a>
+                </p>
+              </div>
 
               <!-- CTA Button -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">

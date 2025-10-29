@@ -7,9 +7,16 @@
  * - firstName: User's first name (required)
  * - lastName: User's last name (required)
  * - email: User's email address (required, must be unique)
+ * - username: Login username (required, must be unique, 3-20 chars, alphanumeric and underscores only)
  * - phoneNumber: User's phone number (optional)
  * - companyName: Company/organization name (required)
  * - password: Password (required, min 8 chars with complexity requirements)
+ * 
+ * Username requirements:
+ * - 3-20 characters
+ * - Alphanumeric characters and underscores only
+ * - Must be unique across all users
+ * - Will be converted to lowercase
  * 
  * Password requirements:
  * - At least 8 characters
@@ -24,6 +31,8 @@
  * - customerId: Created customer ID
  * - email: User email
  * - message: Success or error message
+ * 
+ * Note: Sends verification email with username included
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -71,14 +80,14 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json();
-    const { firstName, lastName, email, phoneNumber, companyName, password } = body;
+    const { firstName, lastName, email, username, phoneNumber, companyName, password } = body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !companyName || !password) {
+    if (!firstName || !lastName || !email || !username || !companyName || !password) {
       return NextResponse.json(
         { 
           success: false,
-          error: 'Missing required fields. Please provide firstName, lastName, email, companyName, and password.' 
+          error: 'Missing required fields. Please provide firstName, lastName, email, username, companyName, and password.' 
         },
         { status: 400, headers: corsHeaders(origin) }
       );
@@ -88,6 +97,7 @@ export async function POST(request: NextRequest) {
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
     const trimmedEmail = email.trim().toLowerCase();
+    const trimmedUsername = username.trim().toLowerCase();
     const trimmedCompanyName = companyName.trim();
     const trimmedPhoneNumber = phoneNumber?.trim() || null;
 
@@ -109,6 +119,15 @@ export async function POST(request: NextRequest) {
     if (trimmedCompanyName.length < 1 || trimmedCompanyName.length > 255) {
       return NextResponse.json(
         { success: false, error: 'Company name must be between 1 and 255 characters' },
+        { status: 400, headers: corsHeaders(origin) }
+      );
+    }
+
+    // Validate username format
+    const usernameRegex = /^[a-z0-9_]{3,20}$/;
+    if (!usernameRegex.test(trimmedUsername)) {
+      return NextResponse.json(
+        { success: false, error: 'Username must be 3-20 characters, alphanumeric and underscores only' },
         { status: 400, headers: corsHeaders(origin) }
       );
     }
@@ -141,6 +160,19 @@ export async function POST(request: NextRequest) {
     if (existingEmail.rows.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Email address is already registered' },
+        { status: 409, headers: corsHeaders(origin) }
+      );
+    }
+
+    // Check if username already exists
+    const existingUsername = await query(
+      'SELECT id FROM users WHERE username = $1',
+      [trimmedUsername]
+    );
+
+    if (existingUsername.rows.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'Username is already taken. Please choose a different username.' },
         { status: 409, headers: corsHeaders(origin) }
       );
     }
@@ -179,8 +211,7 @@ export async function POST(request: NextRequest) {
 
       const customer = customerResult.rows[0];
 
-      // Generate username from email
-      const username = trimmedEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      // Use provided username
       const fullName = `${trimmedFirstName} ${trimmedLastName}`;
 
       // Create user
@@ -193,7 +224,7 @@ export async function POST(request: NextRequest) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id, username, email, full_name`,
         [
-          username,
+          trimmedUsername,
           passwordHash,
           'CUSTOMER_ADMIN',
           customer.id,
@@ -219,6 +250,7 @@ export async function POST(request: NextRequest) {
         await sendVerificationEmail({
           email: trimmedEmail,
           firstName: trimmedFirstName,
+          username: user.username,
           verificationUrl,
         });
 
