@@ -38,7 +38,36 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// CORS headers helper
+function corsHeaders(origin: string | null) {
+  const allowedOrigins = [
+    'https://site.verifylens.com',
+    'https://www.verifylens.com',
+    'http://localhost:3000',
+  ];
+  
+  const isAllowed = origin && allowedOrigins.includes(origin);
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  return NextResponse.json({}, { 
+    status: 200,
+    headers: corsHeaders(origin)
+  });
+}
+
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  
   try {
     // Parse request body
     const body = await request.json();
@@ -51,7 +80,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Missing required fields. Please provide firstName, lastName, email, companyName, and password.' 
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders(origin) }
       );
     }
 
@@ -66,21 +95,21 @@ export async function POST(request: NextRequest) {
     if (trimmedFirstName.length < 1 || trimmedFirstName.length > 100) {
       return NextResponse.json(
         { success: false, error: 'First name must be between 1 and 100 characters' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders(origin) }
       );
     }
 
     if (trimmedLastName.length < 1 || trimmedLastName.length > 100) {
       return NextResponse.json(
         { success: false, error: 'Last name must be between 1 and 100 characters' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders(origin) }
       );
     }
 
     if (trimmedCompanyName.length < 1 || trimmedCompanyName.length > 255) {
       return NextResponse.json(
         { success: false, error: 'Company name must be between 1 and 255 characters' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders(origin) }
       );
     }
 
@@ -88,7 +117,7 @@ export async function POST(request: NextRequest) {
     if (!EMAIL_REGEX.test(trimmedEmail)) {
       return NextResponse.json(
         { success: false, error: 'Invalid email format' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders(origin) }
       );
     }
 
@@ -99,7 +128,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character'
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders(origin) }
       );
     }
 
@@ -112,7 +141,7 @@ export async function POST(request: NextRequest) {
     if (existingEmail.rows.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Email address is already registered' },
-        { status: 409 }
+        { status: 409, headers: corsHeaders(origin) }
       );
     }
 
@@ -125,7 +154,7 @@ export async function POST(request: NextRequest) {
     if (existingCompany.rows.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Company name is already registered. Please contact support if you need access to this organization.' },
-        { status: 409 }
+        { status: 409, headers: corsHeaders(origin) }
       );
     }
 
@@ -207,7 +236,10 @@ export async function POST(request: NextRequest) {
           email: user.email,
           message: 'Account created successfully. Please check your email to verify your account.'
         },
-        { status: 201 }
+        { 
+          status: 201,
+          headers: corsHeaders(origin)
+        }
       );
 
     } catch (error) {
@@ -222,13 +254,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message.includes('duplicate key')) {
       return NextResponse.json(
         { success: false, error: 'Account already exists with this information' },
-        { status: 409 }
+        { status: 409, headers: corsHeaders(origin) }
       );
     }
 
     return NextResponse.json(
       { success: false, error: 'Registration failed. Please try again.' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders(origin) }
     );
   }
 }
