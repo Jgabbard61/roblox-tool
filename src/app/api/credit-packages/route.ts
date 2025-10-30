@@ -25,8 +25,7 @@ export async function GET(request: NextRequest) {
         id, 
         name, 
         credits, 
-        price_cents, 
-        description,
+        price_cents,
         created_at
       FROM credit_packages 
       WHERE is_active = true 

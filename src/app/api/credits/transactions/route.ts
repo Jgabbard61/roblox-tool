@@ -30,14 +30,13 @@ export async function GET(request: NextRequest) {
         ct.id,
         ct.transaction_type,
         ct.amount,
+        ct.balance_before,
         ct.balance_after,
         ct.description,
+        ct.stripe_payment_intent_id,
         ct.created_at,
-        cp.name as package_name,
-        ct.payment_amount_cents,
         u.username as user_username
       FROM credit_transactions ct
-      LEFT JOIN credit_packages cp ON ct.credit_package_id = cp.id
       LEFT JOIN users u ON ct.user_id = u.id
       WHERE ct.customer_id = $1
       ORDER BY ct.created_at DESC

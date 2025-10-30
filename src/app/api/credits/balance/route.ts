@@ -22,13 +22,15 @@ export async function GET(request: NextRequest) {
     const customerId = session.user.customerId;
 
     // Fetch or create customer credits record
-    const result = await query(
+    await query(
       `INSERT INTO customer_credits (customer_id, balance, total_purchased, total_used)
        VALUES ($1, 0, 0, 0)
-       ON CONFLICT (customer_id) DO NOTHING
-       RETURNING balance, total_purchased, total_used;
-       
-       SELECT balance, total_purchased, total_used, created_at, updated_at
+       ON CONFLICT (customer_id) DO NOTHING`,
+      [customerId]
+    );
+
+    const result = await query(
+      `SELECT balance, total_purchased, total_used, created_at, updated_at
        FROM customer_credits
        WHERE customer_id = $1`,
       [customerId]
