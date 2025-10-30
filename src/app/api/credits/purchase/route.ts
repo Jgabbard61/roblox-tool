@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
             product_data: {
               name: creditPackage.name,
               description: `${creditPackage.credits} credits for VerifyLens - Roblox User Verification Tool`,
-              images: ['https://verifylens.abacusai.app/verifylens-logo.png'],
+              images: ['https://cdn.abacus.ai/images/13cb0b89-442b-4c24-8c8a-85305deb032d.png'],
             },
             unit_amount: creditPackage.price_cents,
           },
