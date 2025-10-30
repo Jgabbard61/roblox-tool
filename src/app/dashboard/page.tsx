@@ -264,10 +264,26 @@ function DashboardContent() {
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-2">Last Purchase</h3>
-            <p className="text-2xl font-bold text-purple-600">
-              {transactions.find(t => t.transaction_type === 'purchase') ? 'Recent' : 'No purchases yet'}
-            </p>
-            <p className="text-gray-500 text-xs mt-1"></p>
+            {(() => {
+              const lastPurchase = transactions.find(t => t.transaction_type === 'PURCHASE');
+              if (lastPurchase) {
+                const date = new Date(lastPurchase.created_at);
+                const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const formattedTime = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                return (
+                  <>
+                    <p className="text-lg font-bold text-purple-600">{formattedDate}</p>
+                    <p className="text-gray-500 text-xs mt-1">{formattedTime}</p>
+                  </>
+                );
+              }
+              return (
+                <>
+                  <p className="text-2xl font-bold text-purple-600">No purchases yet</p>
+                  <p className="text-gray-500 text-xs mt-1"></p>
+                </>
+              );
+            })()}
           </div>
         </div>
 

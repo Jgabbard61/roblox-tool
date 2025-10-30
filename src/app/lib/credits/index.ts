@@ -175,7 +175,7 @@ export async function deductCredits(params: {
       `INSERT INTO credit_transactions 
         (customer_id, user_id, transaction_type, amount, balance_before, balance_after, 
          description, search_history_id)
-       VALUES ($1, $2, 'usage', $3, $4, $5, $6, $7)
+       VALUES ($1, $2, 'USAGE', $3, $4, $5, $6, $7)
        RETURNING *`,
       [customerId, userId, -amount, balanceBefore, balanceAfter, description, searchHistoryId || null]
     );
@@ -237,7 +237,7 @@ export async function addCredits(params: {
       `INSERT INTO credit_transactions 
         (customer_id, user_id, transaction_type, amount, balance_before, balance_after, 
          description, payment_id)
-       VALUES ($1, $2, 'purchase', $3, $4, $5, $6, $7)
+       VALUES ($1, $2, 'PURCHASE', $3, $4, $5, $6, $7)
        RETURNING *`,
       [customerId, userId || null, amount, balanceBefore, balanceAfter, description, paymentId]
     );
