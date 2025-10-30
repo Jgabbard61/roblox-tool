@@ -4,7 +4,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import { useCreditBalance } from '@/app/context/CreditContext';
 
 interface CreditPackage {

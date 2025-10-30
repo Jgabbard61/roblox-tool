@@ -16,7 +16,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email configuration
 const FROM_EMAIL = 'VerifyLens <noreply@verifylens.com>';
-const FROM_NAME = 'VerifyLens';
 
 // ============================================
 // EMAIL VERIFICATION EMAIL

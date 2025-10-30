@@ -60,7 +60,7 @@ export async function uploadFile(
   const supabase = getStorageClient();
 
   // Upload file
-  const { data, error } = await supabase.storage
+  const { data: _data, error } = await supabase.storage
     .from(bucket)
     .upload(path, file, {
       contentType,
