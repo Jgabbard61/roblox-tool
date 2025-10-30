@@ -4,7 +4,7 @@ import { query } from '@/app/lib/db';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-09-30.clover',
+  apiVersion: '2023-10-16',
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';

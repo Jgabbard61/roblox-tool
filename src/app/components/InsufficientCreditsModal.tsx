@@ -76,7 +76,7 @@ export default function InsufficientCreditsModal({
               <h3 className="text-sm font-medium text-gray-900 mb-2">Credit Costs:</h3>
               <ul className="text-sm text-gray-600 space-y-1">
                 <li>• <strong>Exact Search:</strong> 1 credit (FREE if no results found)</li>
-                <li>• <strong>Smart Search:</strong> 2 credits</li>
+                <li>• <strong>Smart Search:</strong> 1 credit</li>
                 <li>• <strong>Display Name Search:</strong> 1 credit</li>
               </ul>
             </div>
