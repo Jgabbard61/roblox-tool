@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/lib/auth';
@@ -61,7 +60,7 @@ export async function POST(request: NextRequest) {
             product_data: {
               name: creditPackage.name,
               description: `${creditPackage.credits} credits for VerifyLens - Roblox User Verification Tool`,
-              images: [`${process.env.NEXTAUTH_URL}/verifylens-logo.png`],
+              images: ['https://verifylens.abacusai.app/verifylens-logo.png'],
             },
             unit_amount: creditPackage.price_cents,
           },
