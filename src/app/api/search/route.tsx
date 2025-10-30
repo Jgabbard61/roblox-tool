@@ -18,8 +18,10 @@ import { logSearch } from "@/app/lib/db";
 import { 
   checkSufficientCredits, 
   deductCredits, 
-  getCustomerCredits 
+  getCustomerCredits,
+  recordFreeSearch
 } from "@/app/lib/credits";
+import { getSearchCache, setSearchCache } from "@/app/lib/search-cache";
 
 // Define TypeScript interfaces for Roblox API responses
 interface RobloxUser {
@@ -79,12 +81,74 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================
-    // CREDIT CHECK (for non-SUPER_ADMIN users)
+    // DUPLICATE SEARCH DETECTION (for non-SUPER_ADMIN users)
     // ============================================
+    let cachedResult = null;
+    
     if (customerId && customerId !== 'null') {
       const customerIdInt = parseInt(customerId);
       
-      // Check if customer has sufficient credits (≥1)
+      // Determine if this is a smart or exact search
+      const cacheSearchType = (searchMode === 'smart' || searchMode === 'displayName') ? 'smart' : 'exact';
+      
+      // Check if this exact search has been performed before
+      cachedResult = await getSearchCache(customerIdInt, keyword, cacheSearchType);
+      
+      if (cachedResult) {
+        console.log(`[Duplicate Search Detected] Customer ${customerIdInt} searched for "${keyword}" (${cacheSearchType}) - returning cached result (no credit charge)`);
+        
+        // Return cached result immediately without charging credits
+        const cachedData = typeof cachedResult.result_data === 'string' 
+          ? JSON.parse(cachedResult.result_data) 
+          : cachedResult.result_data;
+        
+        // Log this duplicate search in search history (but NOT in transactions)
+        if (userId) {
+          const firstResult = cachedData.users && cachedData.users.length > 0 ? cachedData.users[0] : null;
+          
+          const searchLog = await logSearch({
+            userId: parseInt(userId),
+            customerId: customerIdInt,
+            searchType: /^\d+$/.test(keyword) ? 'userId' : 'username',
+            searchMode,
+            searchQuery: keyword,
+            robloxUsername: firstResult?.name,
+            robloxUserId: firstResult?.id,
+            robloxDisplayName: firstResult?.displayName,
+            hasVerifiedBadge: firstResult?.hasVerifiedBadge,
+            resultData: cachedData,
+            resultCount: cachedResult.result_count,
+            resultStatus: cachedResult.result_status,
+            responseTimeMs: 0, // Instant from cache
+          }).catch(err => {
+            console.error('Failed to log duplicate search:', err);
+            return null;
+          });
+          
+          // Record free search transaction (0 credits)
+          if (searchLog) {
+            const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
+            
+            await recordFreeSearch({
+              customerId: customerIdInt,
+              userId: parseInt(userId),
+              searchHistoryId,
+              description: `Duplicate ${cacheSearchType} search for "${keyword}" (cached result, no charge)`,
+            }).catch(err => {
+              console.error('Failed to record free search transaction:', err);
+            });
+          }
+        }
+        
+        return NextResponse.json({
+          ...cachedData,
+          fromCache: true,
+          isDuplicate: true,
+          cacheTtl: CACHE_TTL.DUPLICATE_SEARCH,
+        });
+      }
+      
+      // Not a duplicate - check if customer has sufficient credits
       const hasSufficientCredits = await checkSufficientCredits(customerIdInt, 1);
       
       if (!hasSufficientCredits) {
@@ -254,7 +318,7 @@ export async function GET(request: NextRequest) {
       });
 
       // ============================================
-      // CREDIT DEDUCTION (for non-SUPER_ADMIN users)
+      // CREDIT DEDUCTION AND CACHING (for non-SUPER_ADMIN users)
       // ============================================
       if (customerId && customerId !== 'null') {
         const customerIdInt = parseInt(customerId);
@@ -263,6 +327,7 @@ export async function GET(request: NextRequest) {
         // Determine if we should deduct credits
         let shouldDeductCredits = false;
         let deductionReason = '';
+        const cacheSearchType = (searchMode === 'smart' || searchMode === 'displayName') ? 'smart' : 'exact';
         
         if (searchMode === 'smart' || searchMode === 'displayName') {
           // Smart Match and Display Name: ALWAYS deduct 1 credit
@@ -277,12 +342,24 @@ export async function GET(request: NextRequest) {
           // If no results, it's FREE (shouldDeductCredits = false)
         }
 
-        // Deduct credits if applicable (async, don't wait)
-        if (shouldDeductCredits) {
-          // Wait for search log to complete to get search history ID
-          searchLogPromise.then(searchLog => {
-            const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
-            
+        // Cache the search result (for future duplicate detection)
+        setSearchCache({
+          customerId: customerIdInt,
+          searchTerm: keyword,
+          searchType: cacheSearchType,
+          resultData: { users, searchResults },
+          resultCount: users.length,
+          resultStatus: users.length > 0 ? 'success' : 'no_results',
+        }).catch(err => {
+          console.error('Failed to cache search result:', err);
+        });
+
+        // Handle credit transaction (async, don't wait)
+        searchLogPromise.then(searchLog => {
+          const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
+          
+          if (shouldDeductCredits) {
+            // Deduct credits for this search
             deductCredits({
               customerId: customerIdInt,
               userId: userIdInt,
@@ -294,10 +371,19 @@ export async function GET(request: NextRequest) {
               // Don't fail the request if credit deduction fails
               // This is a critical error that should be monitored
             });
-          });
-        } else {
-          console.log(`[Credits] No deduction for exact search with no results: "${keyword}"`);
-        }
+          } else {
+            // Record a free search (0 credits) for exact searches with no results
+            console.log(`[Credits] No deduction for exact search with no results: "${keyword}"`);
+            recordFreeSearch({
+              customerId: customerIdInt,
+              userId: userIdInt,
+              searchHistoryId,
+              description: `Exact search for "${keyword}" (no results, no charge)`,
+            }).catch(err => {
+              console.error('Failed to record free search transaction:', err);
+            });
+          }
+        });
       }
     }
 

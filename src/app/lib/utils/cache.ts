@@ -263,6 +263,7 @@ export const CACHE_TTL = {
   FUZZY_SEARCH: 300, // 5 minutes - partial matches can change
   USER_PROFILE: 1800, // 30 minutes - user profiles change infrequently
   VERIFICATION_STATUS: 600, // 10 minutes - balance between freshness and performance
+  DUPLICATE_SEARCH: 0, // 0 seconds - duplicate searches return instantly from database cache
 } as const;
 
 /**

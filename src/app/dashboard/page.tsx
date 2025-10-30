@@ -37,6 +37,12 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [customerLogo, setCustomerLogo] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -83,6 +89,29 @@ function DashboardContent() {
     verifyPayment();
   }, [searchParams, refreshBalance]);
 
+  // Function to fetch transactions with pagination
+  const fetchTransactions = async (page: number = currentPage) => {
+    if (!session?.user) return;
+
+    try {
+      setTransactionsLoading(true);
+      const offset = (page - 1) * itemsPerPage;
+      const transactionsRes = await fetch(
+        `/api/credits/transactions?limit=${itemsPerPage}&offset=${offset}`
+      );
+      
+      if (transactionsRes.ok) {
+        const transactionsData = await transactionsRes.json();
+        setTransactions(transactionsData.transactions || []);
+        setTotalTransactions(transactionsData.total || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
   // Fetch customer logo
   useEffect(() => {
     const fetchCustomerLogo = async () => {
@@ -104,6 +133,13 @@ function DashboardContent() {
     }
   }, [session]);
 
+  // Refetch transactions when page changes
+  useEffect(() => {
+    if (session?.user && !loading) {
+      fetchTransactions(currentPage);
+    }
+  }, [currentPage]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!session?.user) return;
@@ -118,12 +154,8 @@ function DashboardContent() {
           setPackages(packagesData.packages || []);
         }
 
-        // Fetch transactions
-        const transactionsRes = await fetch('/api/credits/transactions?limit=10');
-        if (transactionsRes.ok) {
-          const transactionsData = await transactionsRes.json();
-          setTransactions(transactionsData.transactions || []);
-        }
+        // Fetch transactions with pagination
+        await fetchTransactions();
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -133,6 +165,15 @@ function DashboardContent() {
 
     fetchData();
   }, [session, purchaseSuccess]);
+
+  // Refresh transactions after purchase
+  useEffect(() => {
+    if (purchaseSuccess) {
+      // Reset to first page and refresh transactions
+      setCurrentPage(1);
+      fetchTransactions(1);
+    }
+  }, [purchaseSuccess]);
 
   const handlePurchase = async (packageId: number) => {
     try {
@@ -324,7 +365,12 @@ function DashboardContent() {
         <div className="bg-white rounded-lg shadow-xl p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Transaction History</h2>
           
-          {transactions.length === 0 ? (
+          {transactionsLoading && transactions.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 mt-4">Loading transactions...</p>
+            </div>
+          ) : transactions.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-gray-400 mb-4">
                 <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -334,46 +380,106 @@ function DashboardContent() {
               <p className="text-gray-600">No transactions yet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left p-3 text-gray-600 font-semibold">Date</th>
-                    <th className="text-left p-3 text-gray-600 font-semibold">Type</th>
-                    <th className="text-left p-3 text-gray-600 font-semibold">Description</th>
-                    <th className="text-right p-3 text-gray-600 font-semibold">Amount</th>
-                    <th className="text-right p-3 text-gray-600 font-semibold">Balance After</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="p-3 text-gray-700">{formatDate(transaction.created_at)}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          transaction.transaction_type === 'purchase' 
-                            ? 'bg-green-100 text-green-800' 
-                            : transaction.transaction_type === 'usage'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {transaction.transaction_type}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-700">
-                        {transaction.package_name || transaction.description || 'N/A'}
-                      </td>
-                      <td className={`p-3 text-right font-semibold ${
-                        transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.amount >= 0 ? '+' : ''}{transaction.amount}
-                      </td>
-                      <td className="p-3 text-right text-gray-700">{transaction.balance_after}</td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="text-left p-3 text-gray-600 font-semibold">Date</th>
+                      <th className="text-left p-3 text-gray-600 font-semibold">Type</th>
+                      <th className="text-left p-3 text-gray-600 font-semibold">Description</th>
+                      <th className="text-right p-3 text-gray-600 font-semibold">Amount</th>
+                      <th className="text-right p-3 text-gray-600 font-semibold">Balance After</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className={transactionsLoading ? 'opacity-50' : ''}>
+                    {transactions.map((transaction) => (
+                      <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="p-3 text-gray-700">{formatDate(transaction.created_at)}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            transaction.transaction_type === 'purchase' 
+                              ? 'bg-green-100 text-green-800' 
+                              : transaction.transaction_type === 'usage'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {transaction.transaction_type}
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-700">
+                          {transaction.package_name || transaction.description || 'N/A'}
+                        </td>
+                        <td className={`p-3 text-right font-semibold ${
+                          transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {transaction.amount >= 0 ? '+' : ''}{transaction.amount}
+                        </td>
+                        <td className="p-3 text-right text-gray-700">{transaction.balance_after}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalTransactions > itemsPerPage && (
+                <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                  <div className="text-sm text-gray-600">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalTransactions)} of {totalTransactions} transactions
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1 || transactionsLoading}
+                      className="px-3 py-1 rounded border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    
+                    {(() => {
+                      const totalPages = Math.ceil(totalTransactions / itemsPerPage);
+                      const pages = [];
+                      const maxVisible = 5;
+                      
+                      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                      const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                      
+                      if (endPage - startPage < maxVisible - 1) {
+                        startPage = Math.max(1, endPage - maxVisible + 1);
+                      }
+                      
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(i)}
+                            disabled={transactionsLoading}
+                            className={`px-3 py-1 rounded text-sm font-medium ${
+                              currentPage === i
+                                ? 'bg-blue-600 text-white'
+                                : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+                      
+                      return pages;
+                    })()}
+                    
+                    <button
+                      onClick={() => setCurrentPage(Math.min(Math.ceil(totalTransactions / itemsPerPage), currentPage + 1))}
+                      disabled={currentPage >= Math.ceil(totalTransactions / itemsPerPage) || transactionsLoading}
+                      className="px-3 py-1 rounded border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -185,6 +185,53 @@ export async function deductCredits(params: {
 }
 
 /**
+ * Record a free search (no credit deduction)
+ * Creates a transaction record with 0 amount for tracking purposes
+ * 
+ * @param customerId - The customer ID
+ * @param userId - The user who performed the search
+ * @param searchHistoryId - Optional search history ID to link
+ * @param description - Description of why it was free
+ * @returns The created transaction
+ */
+export async function recordFreeSearch(params: {
+  customerId: number;
+  userId: number;
+  searchHistoryId?: number;
+  description: string;
+}): Promise<CreditTransaction> {
+  const { customerId, userId, searchHistoryId, description } = params;
+
+  return transaction(async (client: PoolClient) => {
+    // Get current balance (no need to lock since we're not updating)
+    const balanceResult = await client.query<CreditBalance>(
+      'SELECT * FROM customer_credits WHERE customer_id = $1',
+      [customerId]
+    );
+
+    const currentBalance = balanceResult.rows[0];
+
+    if (!currentBalance) {
+      throw new Error('Customer credit account not found');
+    }
+
+    const balance = currentBalance.balance;
+
+    // Create transaction record with 0 amount
+    const transactionResult = await client.query<CreditTransaction>(
+      `INSERT INTO credit_transactions 
+        (customer_id, user_id, transaction_type, amount, balance_before, balance_after, 
+         description, search_history_id)
+       VALUES ($1, $2, 'USAGE', 0, $3, $3, $4, $5)
+       RETURNING *`,
+      [customerId, userId, balance, description, searchHistoryId || null]
+    );
+
+    return transactionResult.rows[0];
+  });
+}
+
+/**
  * Add credits to customer account (after purchase)
  * Creates a transaction record and updates balance atomically
  * 
