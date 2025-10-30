@@ -11,7 +11,7 @@ import Stripe from 'stripe';
 import { query } from '@/app/lib/db';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
+  apiVersion: '2023-10-16' as any,
 });
 
 export async function GET(request: NextRequest) {
