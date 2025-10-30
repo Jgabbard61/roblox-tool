@@ -439,48 +439,60 @@ function VerifierTool() {
             avatar: user.id,
           });
         } else {
-          // If no user found with exact match, try search
-          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            
-            // Handle insufficient credits (402)
-            if (response.status === 402) {
-              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
-            }
-            // Handle rate limiting (429)
-            else if (response.status === 429) {
-              throw new Error('Rate limited. Please wait before searching again.');
-            }
-            // Handle service unavailable (503)
-            else if (response.status === 503) {
-              throw new Error('Service temporarily unavailable. Please try again in a moment.');
-            }
-            // Generic error
-            else {
-              throw new Error(errorData.message || 'Roblox API error');
-            }
-          }
-          
-          const searchData = await response.json();
-          const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
-          
-          if (!isCurrentlyBatchMode) {
-            setScoredCandidates(candidates);
-            // Show modal for exact search that found no exact match
-            if (searchMode === 'exact') {
+          // If no user found with exact match
+          // In exact mode, don't automatically perform smart search - let user decide
+          if (searchMode === 'exact') {
+            // Show the modal to let user decide if they want to try smart search
+            if (!isCurrentlyBatchMode) {
               setNoResultsQuery(parsed.value);
               setShowNoResultsModal(true);
+              setScoredCandidates([]);
             }
+            
+            outputs.push({
+              input: singleInput,
+              status: 'Not Found',
+              details: 'No exact match found',
+            });
+          } else {
+            // For non-exact modes, perform smart search fallback
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              
+              // Handle insufficient credits (402)
+              if (response.status === 402) {
+                throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+              }
+              // Handle rate limiting (429)
+              else if (response.status === 429) {
+                throw new Error('Rate limited. Please wait before searching again.');
+              }
+              // Handle service unavailable (503)
+              else if (response.status === 503) {
+                throw new Error('Service temporarily unavailable. Please try again in a moment.');
+              }
+              // Generic error
+              else {
+                throw new Error(errorData.message || 'Roblox API error');
+              }
+            }
+            
+            const searchData = await response.json();
+            const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+            
+            if (!isCurrentlyBatchMode) {
+              setScoredCandidates(candidates);
+            }
+            
+            outputs.push({
+              input: singleInput,
+              status: candidates.length > 0 ? 'Suggestions' : 'Not Found',
+              suggestions: candidates,
+              details: candidates.length === 0 ? 'No matches' : undefined,
+            });
           }
-          
-          outputs.push({
-            input: singleInput,
-            status: candidates.length > 0 ? 'Suggestions' : 'Not Found',
-            suggestions: candidates,
-            details: candidates.length === 0 ? 'No matches' : undefined,
-          });
         }
       } catch (error: unknown) {
         console.error('API Error:', error);
@@ -604,11 +616,65 @@ function VerifierTool() {
     setShowDeepContext(true);
   };
 
-  const handleTrySmartSearch = () => {
+  const handleTrySmartSearch = async () => {
     setShowNoResultsModal(false);
     setSearchMode('smart');
     setInput(noResultsQuery);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Trigger the smart search automatically with the stored query
+    // Use setTimeout to allow state updates to complete first
+    setTimeout(async () => {
+      try {
+        setLoading(true);
+        setResult(null);
+        setScoredCandidates([]);
+        
+        // Perform smart search
+        const response = await fetch(`/api/search?keyword=${encodeURIComponent(noResultsQuery)}&limit=10&searchMode=smart`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
+          if (response.status === 402) {
+            throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+          } else if (response.status === 429) {
+            throw new Error('Rate limited. Please wait before searching again.');
+          } else if (response.status === 503) {
+            throw new Error('Service temporarily unavailable. Please try again in a moment.');
+          } else {
+            throw new Error(errorData.message || 'Failed to search. Please try again.');
+          }
+        }
+        
+        const searchData = await response.json();
+        const candidates = getTopSuggestions(noResultsQuery, searchData.data || [], 10);
+        
+        setScoredCandidates(candidates);
+        setOriginalDisplayNameQuery(noResultsQuery);
+        
+        if (candidates.length === 0) {
+          setResult(
+            <div className="bg-red-100 p-4 rounded-md">
+              <h2 className="text-xl font-bold text-red-800">No Results Found</h2>
+              <p>No similar matches found for &quot;{noResultsQuery}&quot;</p>
+            </div>
+          );
+        }
+      } catch (error: unknown) {
+        console.error('Smart Search error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Search failed';
+        
+        setResult(
+          <div className="bg-red-100 p-4 rounded-md">
+            <h2 className="text-xl font-bold text-red-800">Search Error</h2>
+            <p className="mb-2">{errorMessage}</p>
+          </div>
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, 100);
   };
 
   if (status === 'loading') {
