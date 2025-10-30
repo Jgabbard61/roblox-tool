@@ -473,9 +473,19 @@ function VerifierTool() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="w-full max-w-4xl">
-        {/* Admin Dashboard Button for Super Admin */}
-        {session?.user?.role === 'SUPER_ADMIN' && (
-          <div className="mb-4 flex justify-end">
+        {/* Header Buttons */}
+        <div className="mb-4 flex justify-between items-center">
+          {/* Buy Credits Button (for all users) */}
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow-md flex items-center gap-2"
+          >
+            <span>💳</span>
+            <span>Buy Credits</span>
+          </button>
+
+          {/* Admin Dashboard Button (for Super Admin only) */}
+          {session?.user?.role === 'SUPER_ADMIN' && (
             <button
               onClick={() => router.push('/admin')}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium shadow-md flex items-center gap-2"
@@ -483,8 +493,8 @@ function VerifierTool() {
               <span>🔐</span>
               <span>Admin Dashboard</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {!isBatchMode && (
           <ForensicMode
