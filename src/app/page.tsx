@@ -151,35 +151,57 @@ function VerifierTool() {
         // Handle different search modes
         if (searchMode === 'exact' && parsed.type === 'username') {
           // Exact Match Mode - direct username lookup, no cooldown
-          response = await fetch('/api/roblox', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: parsed.value, includeBanned }),
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+          try {
+            response = await fetch('/api/roblox', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: parsed.value, includeBanned }),
+            });
             
-            // Handle insufficient credits (402)
-            if (response.status === 402) {
-              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              
+              // Handle insufficient credits (402)
+              if (response.status === 402) {
+                throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+              }
+              // Handle rate limiting (429)
+              else if (response.status === 429) {
+                throw new Error('Rate limited. Please wait before searching again.');
+              }
+              // Handle service unavailable (503)
+              else if (response.status === 503) {
+                throw new Error('Service temporarily unavailable. Please try again in a moment.');
+              }
+              // Generic error
+              else {
+                throw new Error(errorData.message || 'Roblox API error');
+              }
             }
-            // Handle rate limiting (429)
-            else if (response.status === 429) {
-              throw new Error('Rate limited. Please wait before searching again.');
+            
+            const data = await response.json();
+            user = data.data?.[0] || null;
+          } catch (exactSearchError: unknown) {
+            console.error('Exact Match search error:', exactSearchError);
+            const errorMessage = exactSearchError instanceof Error ? exactSearchError.message : 'Search failed';
+            
+            if (!isCurrentlyBatchMode) {
+              setResult(
+                <div className="bg-red-100 p-4 rounded-md">
+                  <h2 className="text-xl font-bold text-red-800">Search Error</h2>
+                  <p className="mb-2">{errorMessage}</p>
+                  <p className="text-sm text-red-700">Try using <strong>Exact Match</strong> mode if you know the exact username.</p>
+                </div>
+              );
             }
-            // Handle service unavailable (503)
-            else if (response.status === 503) {
-              throw new Error('Service temporarily unavailable. Please try again in a moment.');
-            }
-            // Generic error
-            else {
-              throw new Error(errorData.message || 'Roblox API error');
-            }
+            
+            outputs.push({
+              input: singleInput,
+              status: 'Error',
+              details: errorMessage,
+            });
+            continue;
           }
-          
-          const data = await response.json();
-          user = data.data?.[0] || null;
         } else if (searchMode === 'smart' && (parsed.type === 'username' || parsed.type === 'displayName')) {
           // Smart Match Mode - fuzzy search with AI ranking, trigger cooldown
           if (!isCurrentlyBatchMode) {
@@ -460,6 +482,22 @@ function VerifierTool() {
       } catch (error: unknown) {
         console.error('API Error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Could not connect to Roblox API. Try again.';
+        
+        // Display error UI for single searches (non-batch mode)
+        if (!isCurrentlyBatchMode) {
+          setResult(
+            <div className="bg-red-100 p-4 rounded-md">
+              <h2 className="text-xl font-bold text-red-800">Search Error</h2>
+              <p className="mb-2">{errorMessage}</p>
+              <p className="text-sm text-red-700">
+                {errorMessage.includes('Insufficient credits') 
+                  ? 'Please purchase more credits to continue.'
+                  : 'Try using <strong>Exact Match</strong> mode if you know the exact username.'}
+              </p>
+            </div>
+          );
+        }
+        
         outputs.push({ input: singleInput, status: 'Error', details: errorMessage });
       }
     }
