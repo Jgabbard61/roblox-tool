@@ -156,7 +156,28 @@ function VerifierTool() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: parsed.value, includeBanned }),
           });
-          if (!response.ok) throw new Error('Roblox API error');
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            
+            // Handle insufficient credits (402)
+            if (response.status === 402) {
+              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+            }
+            // Handle rate limiting (429)
+            else if (response.status === 429) {
+              throw new Error('Rate limited. Please wait before searching again.');
+            }
+            // Handle service unavailable (503)
+            else if (response.status === 503) {
+              throw new Error('Service temporarily unavailable. Please try again in a moment.');
+            }
+            // Generic error
+            else {
+              throw new Error(errorData.message || 'Roblox API error');
+            }
+          }
+          
           const data = await response.json();
           user = data.data?.[0] || null;
         } else if (searchMode === 'smart' && (parsed.type === 'username' || parsed.type === 'displayName')) {
@@ -277,7 +298,28 @@ function VerifierTool() {
         } else if (parsed.type === 'userId' || parsed.type === 'url') {
           const id = parsed.userId || parsed.value;
           response = await fetch(`/api/roblox?userId=${id}`);
-          if (!response.ok) throw new Error('Roblox API error');
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            
+            // Handle insufficient credits (402)
+            if (response.status === 402) {
+              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+            }
+            // Handle rate limiting (429)
+            else if (response.status === 429) {
+              throw new Error('Rate limited. Please wait before searching again.');
+            }
+            // Handle service unavailable (503)
+            else if (response.status === 503) {
+              throw new Error('Service temporarily unavailable. Please try again in a moment.');
+            }
+            // Generic error
+            else {
+              throw new Error(errorData.message || 'Roblox API error');
+            }
+          }
+          
           user = await response.json();
         } else if (parsed.type === 'username') {
           // Fallback for username in non-exact mode
@@ -286,13 +328,55 @@ function VerifierTool() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: parsed.value, includeBanned }),
           });
-          if (!response.ok) throw new Error('Roblox API error');
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            
+            // Handle insufficient credits (402)
+            if (response.status === 402) {
+              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+            }
+            // Handle rate limiting (429)
+            else if (response.status === 429) {
+              throw new Error('Rate limited. Please wait before searching again.');
+            }
+            // Handle service unavailable (503)
+            else if (response.status === 503) {
+              throw new Error('Service temporarily unavailable. Please try again in a moment.');
+            }
+            // Generic error
+            else {
+              throw new Error(errorData.message || 'Roblox API error');
+            }
+          }
+          
           const data = await response.json();
           user = data.data?.[0] || null;
         } else {
           // Fallback to search for other cases
           response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
-          if (!response.ok) throw new Error('Roblox API error');
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            
+            // Handle insufficient credits (402)
+            if (response.status === 402) {
+              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+            }
+            // Handle rate limiting (429)
+            else if (response.status === 429) {
+              throw new Error('Rate limited. Please wait before searching again.');
+            }
+            // Handle service unavailable (503)
+            else if (response.status === 503) {
+              throw new Error('Service temporarily unavailable. Please try again in a moment.');
+            }
+            // Generic error
+            else {
+              throw new Error(errorData.message || 'Roblox API error');
+            }
+          }
+          
           const searchData = await response.json();
           const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
           
@@ -332,7 +416,28 @@ function VerifierTool() {
         } else {
           // If no user found with exact match, try search
           response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
-          if (!response.ok) throw new Error('Roblox API error');
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            
+            // Handle insufficient credits (402)
+            if (response.status === 402) {
+              throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
+            }
+            // Handle rate limiting (429)
+            else if (response.status === 429) {
+              throw new Error('Rate limited. Please wait before searching again.');
+            }
+            // Handle service unavailable (503)
+            else if (response.status === 503) {
+              throw new Error('Service temporarily unavailable. Please try again in a moment.');
+            }
+            // Generic error
+            else {
+              throw new Error(errorData.message || 'Roblox API error');
+            }
+          }
+          
           const searchData = await response.json();
           const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
           
