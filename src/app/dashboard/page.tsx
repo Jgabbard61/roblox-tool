@@ -214,14 +214,22 @@ function DashboardContent() {
                   Welcome back, {session?.user?.name || session?.user?.username}!
                 </p>
               </div>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => router.push('/')}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  ← Return to Verifier
+                </button>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -307,47 +315,65 @@ function DashboardContent() {
         {/* Credit Packages */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Buy More Credits</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {packages.map((pkg) => (
-              <div
-                key={pkg.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">{pkg.name}</h3>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">{pkg.credits}</span>
-                    <span className="text-sm text-gray-600 ml-1">credits</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold text-blue-600">
-                      ${(pkg.price_cents / 100).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    ${(pkg.price_cents / pkg.credits / 100).toFixed(0)} per credit
-                  </p>
-                </div>
-                <button
-                  onClick={() => handlePurchase(pkg.id)}
-                  disabled={purchasingPackageId !== null}
-                  className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {purchasingPackageId === pkg.id ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="w-4 h-4" />
-                      Purchase
-                    </>
-                  )}
-                </button>
+          {packages.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Credit Packages Available</h3>
+              <p className="text-gray-600 mb-4">
+                Credit packages haven&apos;t been configured yet. Please contact your administrator.
+              </p>
+              <div className="text-sm text-gray-500">
+                <p className="mb-2">If you&apos;re the administrator, you need to:</p>
+                <ol className="list-decimal list-inside space-y-1 text-left max-w-md mx-auto">
+                  <li>Run the credit packages seed migration on your database</li>
+                  <li>Ensure your DATABASE_URL is correctly configured</li>
+                  <li>Refresh this page after seeding</li>
+                </ol>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {packages.map((pkg) => (
+                <div
+                  key={pkg.id}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-bold text-gray-900">{pkg.name}</h3>
+                    <div className="mt-4">
+                      <span className="text-4xl font-bold text-gray-900">{pkg.credits}</span>
+                      <span className="text-sm text-gray-600 ml-1">credits</span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-2xl font-bold text-blue-600">
+                        ${(pkg.price_cents / 100).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      ${(pkg.price_cents / pkg.credits / 100).toFixed(0)} per credit
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handlePurchase(pkg.id)}
+                    disabled={purchasingPackageId !== null}
+                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {purchasingPackageId === pkg.id ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <DollarSign className="w-4 h-4" />
+                        Purchase
+                      </>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Transaction History */}
