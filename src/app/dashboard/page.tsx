@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import { useCreditBalance } from '@/app/context/CreditContext';
 
 interface CreditPackage {
   id: number;
@@ -26,19 +27,13 @@ interface Transaction {
   user_username: string | null;
 }
 
-interface CreditBalance {
-  balance: number;
-  totalPurchased: number;
-  totalUsed: number;
-}
-
 function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { balance, refreshBalance } = useCreditBalance();
   
   const [packages, setPackages] = useState<CreditPackage[]>([]);
-  const [balance, setBalance] = useState<CreditBalance>({ balance: 0, totalPurchased: 0, totalUsed: 0 });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
@@ -68,10 +63,13 @@ function DashboardContent() {
             setPurchaseSuccess(true);
             setTimeout(() => setPurchaseSuccess(false), 5000);
             
-            // Trigger a refresh of the data after a short delay
+            // Auto-refresh balance from context
+            await refreshBalance();
+            
+            // Clean up URL after a short delay
             setTimeout(() => {
-              window.location.href = '/dashboard';
-            }, 2000);
+              window.history.replaceState({}, '', '/dashboard');
+            }, 1000);
           } else {
             console.error('Payment verification failed');
             alert('Payment verification failed. Please refresh the page or contact support if credits are not showing.');
@@ -84,7 +82,7 @@ function DashboardContent() {
     };
     
     verifyPayment();
-  }, [searchParams]);
+  }, [searchParams, refreshBalance]);
 
   // Fetch customer logo
   useEffect(() => {
@@ -119,17 +117,6 @@ function DashboardContent() {
         if (packagesRes.ok) {
           const packagesData = await packagesRes.json();
           setPackages(packagesData.packages || []);
-        }
-
-        // Fetch balance
-        const balanceRes = await fetch('/api/credits/balance');
-        if (balanceRes.ok) {
-          const balanceData = await balanceRes.json();
-          setBalance({
-            balance: balanceData.balance,
-            totalPurchased: balanceData.totalPurchased,
-            totalUsed: balanceData.totalUsed,
-          });
         }
 
         // Fetch transactions
@@ -227,7 +214,11 @@ function DashboardContent() {
                 <span>Return to Verifier</span>
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={async () => {
+                  await refreshBalance();
+                  // Also refresh transactions and packages
+                  window.location.reload();
+                }}
                 className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition font-medium shadow-md flex items-center gap-2"
               >
                 <span>🔄</span>
@@ -249,17 +240,17 @@ function DashboardContent() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-2">Current Balance</h3>
-            <p className="text-4xl font-bold text-blue-600">{balance.balance}</p>
+            <p className="text-4xl font-bold text-blue-600">{balance?.balance || 0}</p>
             <p className="text-gray-500 text-xs mt-1">credits</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-2">Total Purchased</h3>
-            <p className="text-4xl font-bold text-green-600">{balance.totalPurchased}</p>
+            <p className="text-4xl font-bold text-green-600">{balance?.totalPurchased || 0}</p>
             <p className="text-gray-500 text-xs mt-1">credits</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-2">Total Used</h3>
-            <p className="text-4xl font-bold text-red-600">{balance.totalUsed}</p>
+            <p className="text-4xl font-bold text-red-600">{balance?.totalUsed || 0}</p>
             <p className="text-gray-500 text-xs mt-1">searches</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">

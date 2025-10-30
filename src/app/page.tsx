@@ -16,6 +16,7 @@ import NoResultsModal from './components/NoResultsModal';
 import CreditHeader from './components/CreditHeader';
 import { useCooldown } from './hooks/useCooldown';
 import { getTopSuggestions } from './lib/ranking';
+import { useCreditBalance } from './context/CreditContext';
 
 function normalizeInput(rawInput: string): { type: 'username' | 'displayName' | 'userId' | 'url' | 'invalid'; value: string; userId?: string } {
   const trimmed = rawInput.trim();
@@ -67,6 +68,7 @@ interface BatchOutput {
 function VerifierTool() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { refreshBalance } = useCreditBalance();
 
   const [input, setInput] = useState<string>('');
   const [result, setResult] = useState<ReactNode | null>(null);
@@ -559,6 +561,9 @@ function VerifierTool() {
       }
     }
 
+    // Auto-refresh credit balance after search completes
+    refreshBalance();
+    
     setLoading(false);
   };
 

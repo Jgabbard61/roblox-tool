@@ -1,43 +1,18 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CreditCard, AlertTriangle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-
-interface CreditBalance {
-  balance: number;
-  total_purchased: number;
-  total_used: number;
-  last_purchase_at: string | null;
-}
+import { useCreditBalance } from '@/app/context/CreditContext';
 
 export default function CreditHeader() {
-  const [balance, setBalance] = useState<CreditBalance | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { balance, loading, refreshBalance } = useCreditBalance();
   const [refreshing, setRefreshing] = useState(false);
-
-  const fetchBalance = async () => {
-    try {
-      const res = await fetch('/api/credits/balance');
-      if (res.ok) {
-        const data = await res.json();
-        setBalance(data);
-      }
-    } catch (error) {
-      console.error('Error fetching credit balance:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBalance();
-  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchBalance();
+    await refreshBalance();
     setRefreshing(false);
   };
 
