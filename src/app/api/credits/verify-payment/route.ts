@@ -70,6 +70,16 @@ export async function GET(request: NextRequest) {
       // Begin transaction
       await query('BEGIN', []);
 
+      // Get current balance
+      const currentBalanceResult = await query(
+        'SELECT balance FROM customer_credits WHERE customer_id = $1',
+        [customerId]
+      );
+
+      const balanceBefore = currentBalanceResult.rows.length > 0 
+        ? currentBalanceResult.rows[0].balance 
+        : 0;
+
       // Update or create customer credits
       const updateResult = await query(
         `INSERT INTO customer_credits (customer_id, balance, total_purchased, total_used)
@@ -85,21 +95,20 @@ export async function GET(request: NextRequest) {
 
       const newBalance = updateResult.rows[0].balance;
 
-      // Record the transaction
+      // Record the transaction (matching actual schema)
       await query(
         `INSERT INTO credit_transactions 
-         (customer_id, user_id, transaction_type, amount, balance_after, 
-          credit_package_id, stripe_payment_intent_id, payment_amount_cents, description)
-         VALUES ($1, $2, 'purchase', $3, $4, $5, $6, $7, $8)`,
+         (customer_id, user_id, transaction_type, amount, balance_before, balance_after, 
+          stripe_payment_intent_id, description)
+         VALUES ($1, $2, 'PURCHASE', $3, $4, $5, $6, $7)`,
         [
           customerId,
-          userId || null,
+          userId || customerId, // Use customerId as fallback since user_id is NOT NULL
           credits,
+          balanceBefore,
           newBalance,
-          packageId,
           paymentIntentId,
-          amountPaid,
-          `Purchased ${credits} credits via Stripe (manual verification)`,
+          `Purchased ${credits} credits (Package ID: ${packageId}, Amount: $${(amountPaid / 100).toFixed(2)})`,
         ]
       );
 
