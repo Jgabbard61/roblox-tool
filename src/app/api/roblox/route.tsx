@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
         const customerIdInt = parseInt(customerId);
         const userIdInt = parseInt(userId);
         
-        // Exact search: Only deduct if results found
-        if (firstResult) {
+        // Exact search: Only deduct if results found (valid user ID > 0)
+        if (firstResult && firstResult.id && firstResult.id > 0) {
           searchLogPromise.then(searchLog => {
             const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
             
@@ -181,8 +181,8 @@ export async function GET(request: NextRequest) {
         const customerIdInt = parseInt(customerId);
         const userIdInt = parseInt(userId);
         
-        // Exact search: Only deduct if results found
-        if (data.id) {
+        // Exact search: Only deduct if results found (valid user ID > 0)
+        if (data.id && data.id > 0) {
           searchLogPromise.then(searchLog => {
             const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
             
