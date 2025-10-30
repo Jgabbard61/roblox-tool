@@ -50,13 +50,40 @@ function DashboardContent() {
     }
   }, [status, router]);
 
-  // Check for purchase success
+  // Check for purchase success and verify payment
   useEffect(() => {
-    const purchaseStatus = searchParams.get('purchase');
-    if (purchaseStatus === 'success') {
-      setPurchaseSuccess(true);
-      setTimeout(() => setPurchaseSuccess(false), 5000);
-    }
+    const verifyPayment = async () => {
+      const purchaseStatus = searchParams.get('purchase');
+      const sessionId = searchParams.get('session_id');
+      
+      if (purchaseStatus === 'success' && sessionId) {
+        try {
+          // Verify and process the payment
+          const verifyRes = await fetch(`/api/credits/verify-payment?session_id=${sessionId}`);
+          
+          if (verifyRes.ok) {
+            const verifyData = await verifyRes.json();
+            console.log('Payment verification:', verifyData);
+            
+            setPurchaseSuccess(true);
+            setTimeout(() => setPurchaseSuccess(false), 5000);
+            
+            // Trigger a refresh of the data after a short delay
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 2000);
+          } else {
+            console.error('Payment verification failed');
+            alert('Payment verification failed. Please refresh the page or contact support if credits are not showing.');
+          }
+        } catch (error) {
+          console.error('Error verifying payment:', error);
+          alert('Error verifying payment. Please refresh the page.');
+        }
+      }
+    };
+    
+    verifyPayment();
   }, [searchParams]);
 
   // Fetch customer logo

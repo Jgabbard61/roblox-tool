@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
             currency: 'usd',
             product_data: {
               name: creditPackage.name,
-              description: `${creditPackage.credits} credits for Roblox Verifier Tool`,
+              description: `${creditPackage.credits} credits for VerifyLens - Roblox User Verification Tool`,
+              images: [`${process.env.NEXTAUTH_URL}/verifylens-logo.png`],
             },
             unit_amount: creditPackage.price_cents,
           },
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
       success_url: `${process.env.NEXTAUTH_URL}/dashboard?purchase=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/dashboard?purchase=cancelled`,
       client_reference_id: session.user.customerId.toString(),
+      customer_email: session.user.email || undefined,
       metadata: {
         customer_id: session.user.customerId.toString(),
         customer_name: session.user.customerName,
