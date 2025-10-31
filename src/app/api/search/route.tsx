@@ -102,9 +102,13 @@ export async function GET(request: NextRequest) {
           ? JSON.parse(cachedResult.result_data) 
           : cachedResult.result_data;
         
+        // Extract users and searchResults from cached data
+        const cachedUsers = cachedData.users || [];
+        const cachedSearchResults = cachedData.searchResults || {};
+        
         // Log this duplicate search in search history (but NOT in transactions)
         if (userId) {
-          const firstResult = cachedData.users && cachedData.users.length > 0 ? cachedData.users[0] : null;
+          const firstResult = cachedUsers.length > 0 ? cachedUsers[0] : null;
           
           const searchLog = await logSearch({
             userId: parseInt(userId),
@@ -119,7 +123,7 @@ export async function GET(request: NextRequest) {
             resultData: cachedData,
             resultCount: cachedResult.result_count,
             resultStatus: cachedResult.result_status,
-            responseTimeMs: 0, // Instant from cache
+            responseTimeMs: undefined, // undefined for cached results (will be stored as NULL in DB)
           }).catch(err => {
             console.error('Failed to log duplicate search:', err);
             return null;
@@ -140,8 +144,11 @@ export async function GET(request: NextRequest) {
           }
         }
         
+        // Return in the same format as a regular API response
         return NextResponse.json({
-          ...cachedData,
+          previousPageCursor: cachedSearchResults.previousPageCursor,
+          nextPageCursor: cachedSearchResults.nextPageCursor,
+          data: cachedUsers,
           fromCache: true,
           isDuplicate: true,
           cacheTtl: CACHE_TTL.DUPLICATE_SEARCH,
