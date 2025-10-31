@@ -210,7 +210,11 @@ function DashboardContent() {
   };
 
   const formatPrice = (priceCents: number) => {
-    return (priceCents / 100).toFixed(2);
+    const dollars = priceCents / 100;
+    return dollars.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   if (status === 'loading' || loading) {
@@ -296,7 +300,7 @@ function DashboardContent() {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-2">Last Purchase</h3>
             {(() => {
-              const lastPurchase = transactions.find(t => t.transaction_type === 'PURCHASE');
+              const lastPurchase = transactions.find(t => t.transaction_type.toUpperCase() === 'PURCHASE');
               if (lastPurchase) {
                 const date = new Date(lastPurchase.created_at);
                 const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -398,9 +402,9 @@ function DashboardContent() {
                         <td className="p-3 text-gray-700">{formatDate(transaction.created_at)}</td>
                         <td className="p-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            transaction.transaction_type === 'purchase' 
+                            transaction.transaction_type.toUpperCase() === 'PURCHASE' 
                               ? 'bg-green-100 text-green-800' 
-                              : transaction.transaction_type === 'usage'
+                              : transaction.transaction_type.toUpperCase() === 'USAGE'
                               ? 'bg-blue-100 text-blue-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
