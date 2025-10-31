@@ -225,14 +225,14 @@ function VerifierTool() {
             
             const searchData = await response.json();
             
-            // Only trigger cooldown if this was NOT a duplicate/cached search
-            if (!isCurrentlyBatchMode && !searchData.isDuplicate) {
+            // ALWAYS trigger cooldown for smart searches (prevents abuse)
+            if (!isCurrentlyBatchMode) {
               smartCooldown.startCooldown();
             }
             
             // If duplicate search, refresh balance to show no credit was deducted
             if (searchData.isDuplicate) {
-              console.log('Duplicate search detected - no credit charged');
+              console.log('Duplicate search detected - no credit charged (results from cache)');
               refreshBalance();
             }
             
@@ -291,14 +291,14 @@ function VerifierTool() {
             
             const searchData = await response.json();
             
-            // Only trigger cooldown if this was NOT a duplicate/cached search
-            if (!isCurrentlyBatchMode && !searchData.isDuplicate) {
+            // ALWAYS trigger cooldown for display name searches (prevents abuse)
+            if (!isCurrentlyBatchMode) {
               displayNameCooldown.startCooldown();
             }
             
             // If duplicate search, refresh balance to show no credit was deducted
             if (searchData.isDuplicate) {
-              console.log('Duplicate search detected - no credit charged');
+              console.log('Duplicate search detected - no credit charged (results from cache)');
               refreshBalance();
             }
             
