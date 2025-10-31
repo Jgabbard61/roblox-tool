@@ -206,11 +206,7 @@ function VerifierTool() {
             continue;
           }
         } else if (searchMode === 'smart' && (parsed.type === 'username' || parsed.type === 'displayName')) {
-          // Smart Match Mode - fuzzy search with AI ranking, trigger cooldown
-          if (!isCurrentlyBatchMode) {
-            smartCooldown.startCooldown();
-          }
-          
+          // Smart Match Mode - fuzzy search with AI ranking
           try {
             response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
             
@@ -228,6 +224,18 @@ function VerifierTool() {
             }
             
             const searchData = await response.json();
+            
+            // Only trigger cooldown if this was NOT a duplicate/cached search
+            if (!isCurrentlyBatchMode && !searchData.isDuplicate) {
+              smartCooldown.startCooldown();
+            }
+            
+            // If duplicate search, refresh balance to show no credit was deducted
+            if (searchData.isDuplicate) {
+              console.log('Duplicate search detected - no credit charged');
+              refreshBalance();
+            }
+            
             const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
             
             if (!isCurrentlyBatchMode) {
@@ -264,11 +272,7 @@ function VerifierTool() {
           }
           continue;
         } else if (searchMode === 'displayName') {
-          // Display Name Mode - fuzzy search showing all matching results, trigger cooldown
-          if (!isCurrentlyBatchMode) {
-            displayNameCooldown.startCooldown();
-          }
-          
+          // Display Name Mode - fuzzy search showing all matching results
           try {
             response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=20&searchMode=displayName`);
             
@@ -286,6 +290,18 @@ function VerifierTool() {
             }
             
             const searchData = await response.json();
+            
+            // Only trigger cooldown if this was NOT a duplicate/cached search
+            if (!isCurrentlyBatchMode && !searchData.isDuplicate) {
+              displayNameCooldown.startCooldown();
+            }
+            
+            // If duplicate search, refresh balance to show no credit was deducted
+            if (searchData.isDuplicate) {
+              console.log('Duplicate search detected - no credit charged');
+              refreshBalance();
+            }
+            
             const users = searchData.data || [];
             
             if (!isCurrentlyBatchMode) {
