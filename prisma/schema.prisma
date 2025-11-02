@@ -12,11 +12,11 @@ datasource db {
 
 model Customer {
   id                Int                 @id @default(autoincrement())
-  name              String              @unique
+  name              String
   is_active         Boolean             @default(true)
   created_at        DateTime            @default(now())
   max_users         Int                 @default(5)
-  contact_email     String?
+  contact_email     String?             @unique
   logo_url          String?
   stripe_customer_id String?             @unique
 
@@ -223,7 +223,7 @@ model CreditTransaction {
   transaction_type  String      // 'credit', 'debit'
   source            String      // 'api', 'web', 'purchase', 'refund'
   description       String?
-  metadata          String?     @db.Json
+  metadata          Json?
   created_at        DateTime    @default(now())
 
   @@index([customer_id])
