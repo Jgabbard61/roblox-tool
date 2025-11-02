@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createCustomerWithAdmin } from '@/app/lib/db';
 import { createApiClient, createApiKey } from '@/app/lib/api-key';
-import { hash } from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { query } from '@/app/lib/db';
 
 /**
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Generate a temporary password (users should use the password reset flow)
     const temporaryPassword = Math.random().toString(36).slice(-12);
-    const passwordHash = await hash(temporaryPassword, 12);
+    const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
     // Create customer and admin user
     const { customer, user } = await createCustomerWithAdmin(
