@@ -113,13 +113,19 @@ export const POST = withApiAuth(
         customerId: number;
         customerName: string;
         lastUpdated: string;
-        transactions?: Array<{
+        recentTransactions?: Array<{
           id: number;
           amount: number;
           type: string;
           description: string;
           createdAt: string;
         }>;
+        usage?: {
+          totalSearches: number;
+          successfulSearches: number;
+          exactSearches: number;
+          smartSearches: number;
+        };
       }
 
       const responseData: BalanceResponseData = {
