@@ -18,6 +18,10 @@ export async function middleware(request: NextRequest) {
     '/auth/signin',
     '/api/auth',
     '/api/health',
+    '/api/v1/keys/create',  // Public API endpoint for creating new customers
+    '/api/v1/verify',        // Public API endpoints for verification (with API key)
+    '/api/v1/usage',         // Public API endpoints for usage (with API key)
+    '/api/v1/credits',       // Public API endpoints for credits (with API key)
     '/_next',
     '/favicon.ico',
   ];
