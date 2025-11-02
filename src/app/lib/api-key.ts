@@ -184,7 +184,7 @@ export async function listApiKeys(apiClientId: number): Promise<ApiKeyData[]> {
     [apiClientId]
   );
 
-  return result.rows;
+  return result.rows as ApiKeyData[];
 }
 
 /**
