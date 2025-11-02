@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
  * GET /api/v1/auth/generate-key
  * Lists all API keys for the authenticated customer (with sensitive data masked)
  */
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // Authenticate user session
     const session = await getServerSession(authOptions);

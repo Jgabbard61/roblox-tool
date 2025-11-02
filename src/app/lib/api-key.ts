@@ -95,10 +95,10 @@ export async function createApiKey(
     [apiClientId, keyHash, keyPrefix, name, scopes, rateLimit, expiresAt]
   );
 
-  const keyData: ApiKeyData = {
+  const keyData = {
     ...result.rows[0],
     customer_id: customerId,
-  };
+  } as ApiKeyData;
 
   return {
     apiKey, // Return the plain API key (only time it's visible)
@@ -135,7 +135,7 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyData | null>
     return null;
   }
 
-  const keyData = result.rows[0];
+  const keyData = result.rows[0] as ApiKeyData;
 
   // Check if key has expired
   if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {

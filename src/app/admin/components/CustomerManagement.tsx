@@ -265,7 +265,7 @@ export default function CustomerManagement() {
         setError(errorMsg);
         alert(`❌ Upload failed\n\n${errorMsg}`);
       }
-    } catch (_err) {
+    } catch {
       const errorMsg = 'Network error - please check your connection and try again';
       setError(errorMsg);
       alert(`❌ ${errorMsg}`);
@@ -303,7 +303,7 @@ export default function CustomerManagement() {
         setError(errorMsg);
         alert(`❌ Delete failed\n\n${errorMsg}`);
       }
-    } catch (_err) {
+    } catch {
       const errorMsg = 'Network error - please check your connection and try again';
       setError(errorMsg);
       alert(`❌ ${errorMsg}`);

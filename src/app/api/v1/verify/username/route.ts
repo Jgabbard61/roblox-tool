@@ -160,6 +160,8 @@ async function searchRobloxUser(
       name: string;
       id: number;
       displayName: string;
+      hasVerifiedBadge?: boolean;
+      created?: string;
     }
 
     interface RobloxSearchResponse {
