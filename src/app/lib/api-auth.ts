@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { validateApiKey } from './api-key';
 import { checkRateLimit } from './rate-limit';
-import { query } from './db';
+import { query } from './db/index';
 
 export interface ApiAuthContext {
   apiKey: {

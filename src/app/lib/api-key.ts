@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { query } from './db';
+import { query } from './db/index';
 
 export interface ApiKeyData {
   id: number;
@@ -184,7 +184,19 @@ export async function listApiKeys(apiClientId: number): Promise<ApiKeyData[]> {
     [apiClientId]
   );
 
-  return result.rows as ApiKeyData[];
+  return result.rows.map(row => ({
+    id: row.id as number,
+    api_client_id: row.api_client_id as number,
+    customer_id: row.customer_id as number,
+    key_prefix: row.key_prefix as string,
+    name: row.name as string,
+    scopes: row.scopes as string[],
+    rate_limit: row.rate_limit as number,
+    is_active: row.is_active as boolean,
+    last_used_at: row.last_used_at ? new Date(row.last_used_at) : null,
+    expires_at: row.expires_at ? new Date(row.expires_at) : null,
+    created_at: new Date(row.created_at),
+  })) as ApiKeyData[];
 }
 
 /**
