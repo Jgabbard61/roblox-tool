@@ -108,7 +108,21 @@ export const POST = withApiAuth(
 
       const customer = balanceResult.rows[0];
 
-      const responseData: any = {
+      interface BalanceResponseData {
+        credits: number;
+        customerId: number;
+        customerName: string;
+        lastUpdated: string;
+        transactions?: Array<{
+          id: number;
+          amount: number;
+          type: string;
+          description: string;
+          createdAt: string;
+        }>;
+      }
+
+      const responseData: BalanceResponseData = {
         credits: parseInt(customer.credits),
         customerId: customer.id,
         customerName: customer.name,

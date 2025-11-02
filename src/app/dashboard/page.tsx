@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCreditBalance } from '@/app/context/CreditContext';
@@ -90,7 +90,7 @@ function DashboardContent() {
   }, [searchParams, refreshBalance]);
 
   // Function to fetch transactions with pagination
-  const fetchTransactions = async (page: number = currentPage) => {
+  const fetchTransactions = useCallback(async (page: number = currentPage) => {
     if (!session?.user) return;
 
     try {
@@ -110,7 +110,7 @@ function DashboardContent() {
     } finally {
       setTransactionsLoading(false);
     }
-  };
+  }, [session, currentPage]);
 
   // Fetch customer logo
   useEffect(() => {
@@ -138,7 +138,7 @@ function DashboardContent() {
     if (session?.user && !loading) {
       fetchTransactions(currentPage);
     }
-  }, [currentPage]);
+  }, [currentPage, session, loading, fetchTransactions]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -164,7 +164,7 @@ function DashboardContent() {
     };
 
     fetchData();
-  }, [session, purchaseSuccess]);
+  }, [session, purchaseSuccess, fetchTransactions]);
 
   // Refresh transactions after purchase
   useEffect(() => {
@@ -173,7 +173,7 @@ function DashboardContent() {
       setCurrentPage(1);
       fetchTransactions(1);
     }
-  }, [purchaseSuccess]);
+  }, [purchaseSuccess, fetchTransactions]);
 
   const handlePurchase = async (packageId: number) => {
     try {

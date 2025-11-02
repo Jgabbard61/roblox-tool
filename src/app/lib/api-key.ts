@@ -200,7 +200,7 @@ export async function updateApiKey(
   }
 ): Promise<void> {
   const updateFields: string[] = [];
-  const updateValues: any[] = [];
+  const updateValues: (string | number | boolean | string[])[] = [];
   let paramIndex = 1;
 
   if (updates.name !== undefined) {

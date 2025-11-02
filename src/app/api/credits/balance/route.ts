@@ -8,7 +8,7 @@ import { query } from '@/app/lib/db';
  * GET /api/credits/balance
  * Fetches the current credit balance for the authenticated user's customer
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 

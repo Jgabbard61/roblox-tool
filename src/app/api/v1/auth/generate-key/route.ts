@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/lib/auth';
 import { createApiClient, createApiKey, getApiClients } from '@/app/lib/api-key';
 import { query } from '@/app/lib/db';
 
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
  * GET /api/v1/auth/generate-key
  * Lists all API keys for the authenticated customer (with sensitive data masked)
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Authenticate user session
     const session = await getServerSession(authOptions);

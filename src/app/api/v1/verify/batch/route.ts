@@ -226,11 +226,21 @@ async function searchRobloxUser(
       throw new Error(`Roblox API error: ${searchResponse.statusText}`);
     }
 
-    const searchData = await searchResponse.json();
+    interface RobloxUser {
+      name: string;
+      id: number;
+      displayName: string;
+    }
+
+    interface RobloxSearchResponse {
+      data?: RobloxUser[];
+    }
+
+    const searchData: RobloxSearchResponse = await searchResponse.json();
 
     // Find exact match (case-insensitive)
     const exactMatch = searchData.data?.find(
-      (user: any) => user.name.toLowerCase() === username.toLowerCase()
+      (user: RobloxUser) => user.name.toLowerCase() === username.toLowerCase()
     );
 
     if (!exactMatch) {

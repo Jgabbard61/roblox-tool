@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Create customer and user in a transaction
-    const result = await query('BEGIN');
+    await query('BEGIN');
 
     try {
       // Create customer

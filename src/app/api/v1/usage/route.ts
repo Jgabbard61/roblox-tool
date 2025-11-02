@@ -248,7 +248,7 @@ export const POST = withApiAuth(
         endpoints,
         methods,
         statusCodes,
-        groupBy = 'day',
+        groupBy: _groupBy = 'day',
       } = body;
 
       // Parse dates
@@ -259,7 +259,7 @@ export const POST = withApiAuth(
 
       // Build query with filters
       let whereClause = 'WHERE au.api_client_id = ANY($1) AND au.created_at BETWEEN $2 AND $3';
-      const queryParams: any[] = [
+      const queryParams: (string[] | Date | string | number | boolean)[] = [
         await getClientIds(context.customer.id),
         startDate,
         endDate,

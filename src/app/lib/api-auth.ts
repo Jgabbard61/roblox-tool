@@ -126,7 +126,7 @@ export async function deductCredits(
   amount: number,
   description: string
 ): Promise<void> {
-  const client = await query('BEGIN');
+  await query('BEGIN');
   
   try {
     // Deduct credits
@@ -219,7 +219,7 @@ export function withApiAuth(
   return async (request: NextRequest): Promise<Response> => {
     const startTime = Date.now();
     let statusCode = 200;
-    let creditsUsed = 0;
+    const creditsUsed = 0;
 
     try {
       // Authenticate request
