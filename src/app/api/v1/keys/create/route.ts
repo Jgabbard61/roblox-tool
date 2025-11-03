@@ -13,7 +13,8 @@ import { query } from '@/app/lib/db';
  * Request body:
  * {
  *   "email": "user@example.com",
- *   "companyName": "My Company"
+ *   "companyName": "My Company",
+ *   "password": "SecurePassword123!" // Optional, minimum 8 characters
  * }
  * 
  * Response:
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json();
-    const { email, companyName } = body;
+    const { email, companyName, password } = body;
 
     // Validate input
     if (!email || !email.includes('@')) {
@@ -44,6 +45,14 @@ export async function POST(request: NextRequest) {
     if (!companyName || companyName.trim().length === 0) {
       return NextResponse.json(
         { error: 'Company name is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate password if provided
+    if (password && password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long' },
         { status: 400 }
       );
     }
@@ -64,9 +73,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a temporary password (users should use the password reset flow)
-    const temporaryPassword = Math.random().toString(36).slice(-12);
-    const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    // Use provided password or generate a temporary one
+    const passwordToUse = password || Math.random().toString(36).slice(-12);
+    const passwordHash = await bcrypt.hash(passwordToUse, 12);
 
     // Create customer and admin user
     const { customer, user } = await createCustomerWithAdmin(

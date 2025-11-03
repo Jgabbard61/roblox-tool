@@ -200,10 +200,10 @@ export async function createCustomerWithAdmin(
   adminEmail?: string
 ) {
   return transaction(async (client) => {
-    // Create customer
+    // Create customer with contact_email set to admin email
     const customerResult = await client.query(
-      'INSERT INTO customers (name, is_active) VALUES ($1, $2) RETURNING id, name, is_active, created_at',
-      [customerName, true]
+      'INSERT INTO customers (name, is_active, contact_email) VALUES ($1, $2, $3) RETURNING id, name, is_active, contact_email, created_at',
+      [customerName, true, adminEmail]
     );
     
     const customer = customerResult.rows[0];
