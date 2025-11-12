@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCreditBalance } from '@/app/context/CreditContext';
 import ApiKeyManager from '@/app/components/ApiKeyManager';
+import ApiUsageTracker from '@/app/components/ApiUsageTracker';
 
 interface CreditPackage {
   id: number;
@@ -324,7 +325,7 @@ function DashboardContent() {
         </div>
 
         {/* Credit Packages */}
-        <div className="bg-white rounded-lg shadow-xl p-6 mb-6">
+        <div id="credit-packages" className="bg-white rounded-lg shadow-xl p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Buy More Credits</h2>
           
           {packages.length === 0 ? (
@@ -487,6 +488,9 @@ function DashboardContent() {
             </>
           )}
         </div>
+
+        {/* API Usage Tracking */}
+        <ApiUsageTracker className="mb-6" />
 
         {/* API Key Management */}
         <ApiKeyManager className="mt-6" />
