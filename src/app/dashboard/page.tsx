@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCreditBalance } from '@/app/context/CreditContext';
+import ApiKeyManager from '@/app/components/ApiKeyManager';
 
 interface CreditPackage {
   id: number;
@@ -486,6 +487,9 @@ function DashboardContent() {
             </>
           )}
         </div>
+
+        {/* API Key Management */}
+        <ApiKeyManager className="mt-6" />
       </div>
     </main>
   );
