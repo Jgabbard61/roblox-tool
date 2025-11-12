@@ -159,7 +159,7 @@ export const GET = withApiAuth(
           COUNT(CASE WHEN result_found THEN 1 END) as successful
          FROM search_history
          WHERE customer_id = $1
-         AND created_at BETWEEN $2 AND $3
+         AND searched_at BETWEEN $2 AND $3
          GROUP BY search_mode`,
         [context.customer.id, startDate, endDate]
       );

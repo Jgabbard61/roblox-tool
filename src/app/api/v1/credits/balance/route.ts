@@ -45,6 +45,18 @@ export const GET = withApiAuth(
 
       const customer = result.rows[0];
 
+      // Get usage statistics
+      const usageResult = await query(
+        `SELECT 
+          COUNT(*) as total,
+          COUNT(CASE WHEN searched_at >= date_trunc('month', CURRENT_TIMESTAMP) THEN 1 END) as this_month
+         FROM search_history
+         WHERE customer_id = $1`,
+        [context.customer.id]
+      );
+
+      const usage = usageResult.rows[0] || { total: 0, this_month: 0 };
+
       return NextResponse.json({
         success: true,
         data: {
@@ -52,6 +64,10 @@ export const GET = withApiAuth(
           customerId: customer.id,
           customerName: customer.name,
           lastUpdated: customer.last_updated,
+          usage: {
+            total: parseInt(usage.total),
+            thisMonth: parseInt(usage.this_month),
+          },
         },
       });
     } catch (error) {
