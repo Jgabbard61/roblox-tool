@@ -528,15 +528,15 @@ function DashboardContent() {
             </>
           )}
         </div>
-
-        {/* API Usage Tracking */}
-        <ApiUsageTracker className="mb-6" />
           </>
         )}
 
         {/* API Tab Content */}
         {activeTab === 'api' && (
           <>
+            {/* API Usage Tracking */}
+            <ApiUsageTracker className="mb-6" />
+
             {/* API Key Management */}
             <ApiKeyManager />
           </>
