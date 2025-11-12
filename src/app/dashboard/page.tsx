@@ -39,6 +39,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [customerLogo, setCustomerLogo] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'api'>('overview');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -282,7 +283,46 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Stats Cards */}
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-xl mb-6 overflow-hidden">
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex-1 px-6 py-4 text-center font-semibold transition-all ${
+                activeTab === 'overview'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white border-b-4 border-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>Overview</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('api')}
+              className={`flex-1 px-6 py-4 text-center font-semibold transition-all ${
+                activeTab === 'api'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white border-b-4 border-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                <span>API</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Overview Tab Content */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-2">Current Balance</h3>
@@ -491,9 +531,16 @@ function DashboardContent() {
 
         {/* API Usage Tracking */}
         <ApiUsageTracker className="mb-6" />
+          </>
+        )}
 
-        {/* API Key Management */}
-        <ApiKeyManager className="mt-6" />
+        {/* API Tab Content */}
+        {activeTab === 'api' && (
+          <>
+            {/* API Key Management */}
+            <ApiKeyManager />
+          </>
+        )}
       </div>
     </main>
   );
