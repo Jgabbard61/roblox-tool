@@ -182,13 +182,22 @@ export default function ApiKeyManager({ className = '' }: ApiKeyManagerProps) {
           <h2 className="text-2xl font-bold text-gray-800">API Keys</h2>
           <p className="text-gray-600 text-sm mt-1">Manage your API keys for programmatic access</p>
         </div>
-        <button
-          onClick={() => setShowGenerateForm(!showGenerateForm)}
-          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition font-medium shadow-md flex items-center gap-2"
-        >
-          <span>+</span>
-          <span>Generate New Key</span>
-        </button>
+        <div className="flex gap-3">
+          <a
+            href="/dashboard/api-docs"
+            className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition font-medium shadow-md flex items-center gap-2"
+          >
+            <span>📖</span>
+            <span>API Documentation</span>
+          </a>
+          <button
+            onClick={() => setShowGenerateForm(!showGenerateForm)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition font-medium shadow-md flex items-center gap-2"
+          >
+            <span>+</span>
+            <span>Generate New Key</span>
+          </button>
+        </div>
       </div>
 
       {/* New API Key Modal */}
