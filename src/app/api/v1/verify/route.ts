@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withApiAuth, deductCredits } from '@/app/lib/api-auth';
+import { withApiAuth, deductCredits, ApiAuthContext } from '@/app/lib/api-auth';
 import { withCache, generateCacheKey, CACHE_TTL } from '@/app/lib/utils/cache';
 import { query } from '@/app/lib/db';
 
@@ -48,13 +48,13 @@ export const POST = withApiAuth(
       // Determine verification type
       if (username) {
         // Single username verification
-        return await verifyUsername(username, includeBanned, context, request);
+        return await verifyUsername(username, includeBanned, context);
       } else if (userId) {
         // Single user ID verification
-        return await verifyUserId(userId, includeBanned, context, request);
+        return await verifyUserId(userId, includeBanned, context);
       } else if (usernames && Array.isArray(usernames)) {
         // Batch verification
-        return await verifyBatch(usernames, includeBanned, context, request);
+        return await verifyBatch(usernames, includeBanned, context);
       } else {
         return NextResponse.json(
           { 
@@ -86,8 +86,7 @@ export const POST = withApiAuth(
 async function verifyUsername(
   username: string,
   includeBanned: boolean,
-  context: any,
-  request: NextRequest
+  context: ApiAuthContext
 ) {
   // Validate input
   if (typeof username !== 'string' || username.trim().length === 0) {
@@ -162,8 +161,7 @@ async function verifyUsername(
 async function verifyUserId(
   userId: number,
   includeBanned: boolean,
-  context: any,
-  request: NextRequest
+  context: ApiAuthContext
 ) {
   // Validate input
   if (typeof userId !== 'number' || userId <= 0) {
@@ -236,8 +234,7 @@ async function verifyUserId(
 async function verifyBatch(
   usernames: string[],
   includeBanned: boolean,
-  context: any,
-  request: NextRequest
+  context: ApiAuthContext
 ) {
   // Validate input
   if (!Array.isArray(usernames) || usernames.length === 0) {
