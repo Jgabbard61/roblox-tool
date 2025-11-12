@@ -30,7 +30,7 @@ export const GET = withApiAuth(
     try {
       const { searchParams } = new URL(request.url);
       const amountStr = searchParams.get('amount');
-      const description = searchParams.get('description') || 'Manual credit addition';
+      const description = searchParams.get('description') || 'Manual credit addition via API';
 
       // Validate amount
       if (!amountStr) {
@@ -52,26 +52,52 @@ export const GET = withApiAuth(
       await query('BEGIN');
 
       try {
-        // Update customer credits
-        const updateResult = await query(
-          `INSERT INTO customer_credits (customer_id, credits, created_at, updated_at)
-           VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           ON CONFLICT (customer_id)
-           DO UPDATE SET 
-             credits = customer_credits.credits + $2,
-             updated_at = CURRENT_TIMESTAMP
-           RETURNING credits`,
-          [context.customer.id, amount]
+        // Get a user_id for this customer (required by credit_transactions table)
+        // We'll use the first active user, or NULL if none exists
+        const userResult = await query(
+          `SELECT id FROM users 
+           WHERE customer_id = $1 AND is_active = true 
+           ORDER BY id ASC LIMIT 1`,
+          [context.customer.id]
         );
 
-        const newBalance = parseInt(updateResult.rows[0].credits);
+        const userId = userResult.rows.length > 0 ? userResult.rows[0].id : null;
 
-        // Log the transaction
+        // Initialize customer credits if doesn't exist
+        await query(
+          `INSERT INTO customer_credits (customer_id, balance, total_purchased, total_used)
+           VALUES ($1, 0, 0, 0)
+           ON CONFLICT (customer_id) DO NOTHING`,
+          [context.customer.id]
+        );
+
+        // Lock the row for update and get current balance
+        const balanceResult = await query(
+          `SELECT balance FROM customer_credits 
+           WHERE customer_id = $1 FOR UPDATE`,
+          [context.customer.id]
+        );
+
+        const balanceBefore = parseInt(balanceResult.rows[0].balance);
+        const balanceAfter = balanceBefore + amount;
+
+        // Update customer credits
+        await query(
+          `UPDATE customer_credits 
+           SET balance = $1, 
+               total_purchased = total_purchased + $2,
+               last_purchase_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE customer_id = $3`,
+          [balanceAfter, amount, context.customer.id]
+        );
+
+        // Log the transaction with proper balance tracking
         await query(
           `INSERT INTO credit_transactions 
-           (customer_id, amount, transaction_type, description, created_at)
-           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-          [context.customer.id, amount, 'credit', description]
+           (customer_id, user_id, amount, transaction_type, balance_before, balance_after, description, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+          [context.customer.id, userId, amount, 'ADJUSTMENT', balanceBefore, balanceAfter, description]
         );
 
         await query('COMMIT');
@@ -80,7 +106,8 @@ export const GET = withApiAuth(
           success: true,
           data: {
             creditsAdded: amount,
-            newBalance,
+            balanceBefore,
+            newBalance: balanceAfter,
             customerId: context.customer.id,
             description,
           },
@@ -122,7 +149,7 @@ export const POST = withApiAuth(
   async (request: NextRequest, context) => {
     try {
       const body = await request.json();
-      const { amount, description = 'Manual credit addition' } = body;
+      const { amount, description = 'Manual credit addition via API' } = body;
 
       // Validate amount
       if (!amount || typeof amount !== 'number') {
@@ -143,26 +170,52 @@ export const POST = withApiAuth(
       await query('BEGIN');
 
       try {
-        // Update customer credits
-        const updateResult = await query(
-          `INSERT INTO customer_credits (customer_id, credits, created_at, updated_at)
-           VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           ON CONFLICT (customer_id)
-           DO UPDATE SET 
-             credits = customer_credits.credits + $2,
-             updated_at = CURRENT_TIMESTAMP
-           RETURNING credits`,
-          [context.customer.id, amount]
+        // Get a user_id for this customer (required by credit_transactions table)
+        // We'll use the first active user, or NULL if none exists
+        const userResult = await query(
+          `SELECT id FROM users 
+           WHERE customer_id = $1 AND is_active = true 
+           ORDER BY id ASC LIMIT 1`,
+          [context.customer.id]
         );
 
-        const newBalance = parseInt(updateResult.rows[0].credits);
+        const userId = userResult.rows.length > 0 ? userResult.rows[0].id : null;
 
-        // Log the transaction
+        // Initialize customer credits if doesn't exist
+        await query(
+          `INSERT INTO customer_credits (customer_id, balance, total_purchased, total_used)
+           VALUES ($1, 0, 0, 0)
+           ON CONFLICT (customer_id) DO NOTHING`,
+          [context.customer.id]
+        );
+
+        // Lock the row for update and get current balance
+        const balanceResult = await query(
+          `SELECT balance FROM customer_credits 
+           WHERE customer_id = $1 FOR UPDATE`,
+          [context.customer.id]
+        );
+
+        const balanceBefore = parseInt(balanceResult.rows[0].balance);
+        const balanceAfter = balanceBefore + amount;
+
+        // Update customer credits
+        await query(
+          `UPDATE customer_credits 
+           SET balance = $1, 
+               total_purchased = total_purchased + $2,
+               last_purchase_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE customer_id = $3`,
+          [balanceAfter, amount, context.customer.id]
+        );
+
+        // Log the transaction with proper balance tracking
         await query(
           `INSERT INTO credit_transactions 
-           (customer_id, amount, transaction_type, description, created_at)
-           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
-          [context.customer.id, amount, 'credit', description]
+           (customer_id, user_id, amount, transaction_type, balance_before, balance_after, description, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+          [context.customer.id, userId, amount, 'ADJUSTMENT', balanceBefore, balanceAfter, description]
         );
 
         await query('COMMIT');
@@ -171,7 +224,8 @@ export const POST = withApiAuth(
           success: true,
           data: {
             creditsAdded: amount,
-            newBalance,
+            balanceBefore,
+            newBalance: balanceAfter,
             customerId: context.customer.id,
             description,
           },
