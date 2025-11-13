@@ -119,7 +119,9 @@ export function hasCredits(context: ApiAuthContext, required: number): boolean {
 }
 
 /**
- * Deducts credits from customer account
+ * Deducts credits from customer account (API transactions)
+ * This version is for API transactions where there is no user_id (only customer_id via API key)
+ * Note: user_id will be NULL for API transactions
  */
 export async function deductCredits(
   customerId: number,
@@ -129,26 +131,44 @@ export async function deductCredits(
   await query('BEGIN');
   
   try {
-    // Deduct credits
-    const result = await query(
-      `UPDATE customer_credits 
-       SET credits = credits - $1,
-           updated_at = NOW()
-       WHERE customer_id = $2 AND credits >= $1
-       RETURNING credits`,
-      [amount, customerId]
+    // Lock the row and get current balance
+    const balanceResult = await query(
+      `SELECT balance FROM customer_credits 
+       WHERE customer_id = $1 
+       FOR UPDATE`,
+      [customerId]
     );
 
-    if (result.rows.length === 0) {
+    if (balanceResult.rows.length === 0) {
+      throw new ApiAuthError(402, 'Customer credit account not found');
+    }
+
+    const balanceBefore = balanceResult.rows[0].balance;
+
+    // Check if customer has enough credits
+    if (balanceBefore < amount) {
       throw new ApiAuthError(402, 'Insufficient credits');
     }
 
-    // Record transaction
+    const balanceAfter = balanceBefore - amount;
+
+    // Update balance
+    await query(
+      `UPDATE customer_credits 
+       SET balance = $1, 
+           total_used = total_used + $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE customer_id = $3`,
+      [balanceAfter, amount, customerId]
+    );
+
+    // Record transaction with proper balance tracking
+    // Note: user_id is NULL for API transactions (allowed after migration 014)
     await query(
       `INSERT INTO credit_transactions 
-       (customer_id, amount, transaction_type, description)
-       VALUES ($1, $2, 'debit', $3)`,
-      [customerId, -amount, description]
+       (customer_id, user_id, transaction_type, amount, balance_before, balance_after, description)
+       VALUES ($1, NULL, 'USAGE', $2, $3, $4, $5)`,
+      [customerId, -amount, balanceBefore, balanceAfter, description]
     );
 
     await query('COMMIT');
