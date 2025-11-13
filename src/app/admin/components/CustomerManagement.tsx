@@ -28,6 +28,10 @@ export default function CustomerManagement() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showAddCreditsModal, setShowAddCreditsModal] = useState(false);
+  const [addingCredits, setAddingCredits] = useState(false);
+  const [creditAmount, setCreditAmount] = useState<number>(100);
+  const [creditDescription, setCreditDescription] = useState<string>('');
 
   const [newCustomer, setNewCustomer] = useState({
     customerName: '',
@@ -312,6 +316,76 @@ export default function CustomerManagement() {
     }
   };
 
+  const openAddCreditsModal = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCreditAmount(100);
+    setCreditDescription('VerifyLens support added credits');
+    setShowAddCreditsModal(true);
+  };
+
+  const handleAddCredits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+
+    // Validate amount
+    if (creditAmount <= 0) {
+      alert('❌ Amount must be greater than 0');
+      return;
+    }
+
+    if (creditAmount > 10000) {
+      alert('❌ Amount cannot exceed 10,000 credits per transaction');
+      return;
+    }
+
+    if (!creditDescription.trim()) {
+      alert('❌ Description is required');
+      return;
+    }
+
+    setAddingCredits(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/admin/credits/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: selectedCustomer.id,
+          amount: creditAmount,
+          description: creditDescription,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(
+          `✅ Credits added successfully!\n\n` +
+          `Customer: ${selectedCustomer.name}\n` +
+          `Amount: ${creditAmount} credits\n` +
+          `New Balance: ${data.transaction.balanceAfter} credits\n\n` +
+          `Transaction ID: ${data.transaction.id}`
+        );
+        setShowAddCreditsModal(false);
+        setSelectedCustomer(null);
+        fetchCustomers();
+      } else {
+        const errorMsg = data.details 
+          ? `${data.error}\n\nDetails: ${data.details}`
+          : data.error || 'Failed to add credits';
+        setError(errorMsg);
+        alert(`❌ Failed to add credits\n\n${errorMsg}`);
+      }
+    } catch {
+      const errorMsg = 'Network error - please check your connection and try again';
+      setError(errorMsg);
+      alert(`❌ ${errorMsg}`);
+    } finally {
+      setAddingCredits(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -400,6 +474,13 @@ export default function CustomerManagement() {
                     {new Date(customer.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => openAddCreditsModal(customer)}
+                      className="text-green-600 hover:text-green-900 font-semibold"
+                      title="Add credits to customer account"
+                    >
+                      💳 Add Credits
+                    </button>
                     <button
                       onClick={() => openEditModal(customer)}
                       className="text-blue-600 hover:text-blue-900"
@@ -713,6 +794,86 @@ export default function CustomerManagement() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Credits Modal */}
+      {showAddCreditsModal && selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">💳 Add Credits</h3>
+              <button
+                onClick={() => setShowAddCreditsModal(false)}
+                className="text-white hover:text-gray-200 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleAddCredits} className="p-6 space-y-4">
+              <div className="text-sm text-gray-600 mb-4">
+                Customer: <span className="font-semibold">{selectedCustomer.name}</span> (ID: {selectedCustomer.id})
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Credit Amount *
+                </label>
+                <input
+                  type="number"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  min={1}
+                  max={10000}
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the number of credits to add (1-10,000)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  value={creditDescription}
+                  onChange={(e) => setCreditDescription(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="e.g., VerifyLens support added credits"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This will be logged in the audit trail
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">ℹ️ Note:</span> This action will be logged with your username in the credit transaction history.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCreditsModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingCredits}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50"
+                >
+                  {addingCredits ? 'Adding...' : 'Add Credits'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
