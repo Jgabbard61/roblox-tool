@@ -7,17 +7,6 @@ export async function middleware(request: NextRequest) {
   const start = Date.now();
   let { pathname } = request.nextUrl;
 
-  // Normalize trailing slashes for API routes to prevent redirect issues
-  // Rewrite the URL without trailing slash for POST/PUT/PATCH/DELETE requests
-  if (pathname.endsWith('/') && pathname !== '/' && pathname.startsWith('/api/')) {
-    const method = request.method;
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-      const url = request.nextUrl.clone();
-      url.pathname = pathname.slice(0, -1);
-      return NextResponse.rewrite(url);
-    }
-  }
-
   // Get the JWT token
   const token = await getToken({
     req: request,

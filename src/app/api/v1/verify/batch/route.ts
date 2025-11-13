@@ -145,32 +145,27 @@ export const POST = withApiAuth(
         }
       }
 
-      // Deduct credits for non-cached results
-      const creditsToDeduct = usernames.length - totalFromCache;
-      let creditsUsed = 0;
-      
-      if (creditsToDeduct > 0) {
-        await deductCredits(
-          context.customer.id,
-          creditsToDeduct,
-          `Batch verification: ${creditsToDeduct} usernames`
-        );
-        creditsUsed = creditsToDeduct;
+      // Always deduct credits for all requests regardless of cache status
+      const creditsUsed = usernames.length;
+      await deductCredits(
+        context.customer.id,
+        creditsUsed,
+        `Batch verification: ${creditsUsed} usernames (${totalFromCache} cached)`
+      );
 
-        // Log batch search
-        await query(
-          `INSERT INTO search_history 
-           (search_query, result_found, customer_id, search_mode, user_data)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            `batch:${usernames.length}`,
-            totalVerified > 0,
-            context.customer.id,
-            'batch',
-            JSON.stringify({ totalRequested: usernames.length, totalVerified }),
-          ]
-        );
-      }
+      // Log batch search
+      await query(
+        `INSERT INTO search_history 
+         (search_query, result_found, customer_id, search_mode, user_data)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          `batch:${usernames.length}`,
+          totalVerified > 0,
+          context.customer.id,
+          'batch',
+          JSON.stringify({ totalRequested: usernames.length, totalVerified }),
+        ]
+      );
 
       return NextResponse.json({
         success: true,

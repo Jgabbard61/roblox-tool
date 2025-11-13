@@ -80,17 +80,16 @@ export const POST = withApiAuth(
         { ttl: CACHE_TTL.EXACT_SEARCH }
       );
 
-      // Only deduct credits if it's not from cache
-      let creditsUsed = 0;
-      if (!fromCache) {
-        await deductCredits(
-          context.customer.id,
-          1,
-          `User ID verification: ${userId}`
-        );
-        creditsUsed = 1;
+      // Always deduct credits regardless of cache status
+      await deductCredits(
+        context.customer.id,
+        1,
+        `User ID verification: ${userId}${fromCache ? ' (cached)' : ''}`
+      );
+      const creditsUsed = 1;
 
-        // Log the search
+      // Log the search only if it's not from cache
+      if (!fromCache) {
         await query(
           `INSERT INTO search_history 
            (search_query, result_found, customer_id, search_mode, user_data)
@@ -240,17 +239,16 @@ export const GET = withApiAuth(
         { ttl: CACHE_TTL.EXACT_SEARCH }
       );
 
-      // Deduct credits if not from cache
-      let creditsUsed = 0;
-      if (!fromCache) {
-        await deductCredits(
-          context.customer.id,
-          1,
-          `User ID verification: ${userId}`
-        );
-        creditsUsed = 1;
+      // Always deduct credits regardless of cache status
+      await deductCredits(
+        context.customer.id,
+        1,
+        `User ID verification: ${userId}${fromCache ? ' (cached)' : ''}`
+      );
+      const creditsUsed = 1;
 
-        // Log the search
+      // Log the search only if it's not from cache
+      if (!fromCache) {
         await query(
           `INSERT INTO search_history 
            (search_query, result_found, customer_id, search_mode, user_data)
