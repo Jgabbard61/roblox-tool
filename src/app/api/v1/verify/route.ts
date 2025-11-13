@@ -120,17 +120,16 @@ async function verifyUsername(
     { ttl: CACHE_TTL.EXACT_SEARCH }
   );
 
-  // Only deduct credits if it's not from cache
-  let creditsUsed = 0;
-  if (!fromCache) {
-    await deductCredits(
-      context.customer.id,
-      1,
-      `Username verification: ${trimmedUsername}`
-    );
-    creditsUsed = 1;
+  // Always deduct credits regardless of cache status
+  await deductCredits(
+    context.customer.id,
+    1,
+    `Username verification: ${trimmedUsername}${fromCache ? ' (cached)' : ''}`
+  );
+  const creditsUsed = 1;
 
-    // Log the search
+  // Log the search only if it's not from cache
+  if (!fromCache) {
     await query(
       `INSERT INTO search_history 
        (search_query, result_found, customer_id, search_mode, user_data)
@@ -193,17 +192,16 @@ async function verifyUserId(
     { ttl: CACHE_TTL.EXACT_SEARCH }
   );
 
-  // Only deduct credits if it's not from cache
-  let creditsUsed = 0;
-  if (!fromCache) {
-    await deductCredits(
-      context.customer.id,
-      1,
-      `User ID verification: ${userId}`
-    );
-    creditsUsed = 1;
+  // Always deduct credits regardless of cache status
+  await deductCredits(
+    context.customer.id,
+    1,
+    `User ID verification: ${userId}${fromCache ? ' (cached)' : ''}`
+  );
+  const creditsUsed = 1;
 
-    // Log the search
+  // Log the search only if it's not from cache
+  if (!fromCache) {
     await query(
       `INSERT INTO search_history 
        (search_query, result_found, customer_id, search_mode, user_data)
@@ -291,10 +289,11 @@ async function verifyBatch(
       { ttl: CACHE_TTL.EXACT_SEARCH }
     );
 
-    if (!fromCache) {
-      totalCreditsUsed += 1;
+    // Always count credits regardless of cache status
+    totalCreditsUsed += 1;
 
-      // Log the search
+    // Log the search only if it's not from cache
+    if (!fromCache) {
       await query(
         `INSERT INTO search_history 
          (search_query, result_found, customer_id, search_mode, user_data)
@@ -317,7 +316,7 @@ async function verifyBatch(
     });
   }
 
-  // Deduct credits for non-cached results
+  // Deduct credits for all requests (both cached and non-cached)
   if (totalCreditsUsed > 0) {
     await deductCredits(
       context.customer.id,
