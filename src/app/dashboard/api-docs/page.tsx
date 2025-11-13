@@ -236,6 +236,14 @@ export default function ApiDocsPage() {
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Verification Endpoints</h2>
               
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <p className="text-blue-800 font-medium">💳 Credit Deduction Policy</p>
+                <p className="text-blue-700 text-sm mt-1">
+                  Credits are deducted on every API call, even when results are served from cache. 
+                  Each verification request costs 1 credit, regardless of whether the data is cached or freshly fetched.
+                </p>
+              </div>
+              
               <EndpointSection
                 method="POST"
                 endpoint="/api/v1/verify"
@@ -267,7 +275,8 @@ export default function ApiDocsPage() {
       "isBanned": false,
       "hasVerifiedBadge": true
     },
-    "cached": false
+    "creditsUsed": 1,
+    "fromCache": false
   }
 }`}
                 />
@@ -393,7 +402,8 @@ print_r($data);
       "isBanned": false,
       "hasVerifiedBadge": true
     },
-    "cached": false
+    "creditsUsed": 1,
+    "fromCache": false
   }
 }`}
                 />
@@ -423,29 +433,38 @@ print_r($data);
     "results": [
       {
         "username": "Roblox",
+        "success": true,
         "verified": true,
-        "user": { /* user data */ }
+        "user": { /* user data */ },
+        "fromCache": false
       },
       {
         "username": "builderman",
+        "success": true,
         "verified": true,
-        "user": { /* user data */ }
+        "user": { /* user data */ },
+        "fromCache": true
       },
       {
         "username": "TestUser123",
-        "verified": false,
-        "error": "User not found"
+        "success": false,
+        "error": "Invalid username"
       }
     ],
-    "summary": {
-      "total": 3,
-      "verified": 2,
-      "failed": 1,
-      "creditsUsed": 3
-    }
+    "totalCreditsUsed": 3,
+    "processed": 3
   }
 }`}
                 />
+                
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mt-4">
+                  <p className="text-yellow-800 font-medium">⚠️ Important Note</p>
+                  <p className="text-yellow-700 text-sm mt-1">
+                    Credits are charged for each username in the batch, regardless of whether the result 
+                    comes from cache or is a failed lookup. The <code className="bg-yellow-100 px-1 rounded">fromCache</code> field 
+                    indicates whether the data was served from cache, but credits are still deducted.
+                  </p>
+                </div>
               </EndpointSection>
             </div>
           )}
@@ -972,11 +991,21 @@ print(f"Total requests: {data['data']['totalRequests']}")`}
                 
                 <div className="space-y-4 mb-6">
                   <div>
-                    <h4 className="font-semibold text-gray-800 mb-2">1. Use Caching</h4>
+                    <h4 className="font-semibold text-gray-800 mb-2">1. Use Client-Side Caching</h4>
                     <p className="text-gray-600 mb-2">
-                      The API automatically caches verification results for 5 minutes. You can also implement 
-                      your own caching layer to reduce API calls:
+                      While the API automatically caches verification results on the server for 5 minutes, 
+                      <strong> credits are still deducted on every API call</strong>, even when results are served from cache. 
+                      To avoid unnecessary credit usage, implement your own client-side caching layer:
                     </p>
+                    
+                    <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4">
+                      <p className="text-amber-800 font-medium">💡 Important: Credit Deduction</p>
+                      <p className="text-amber-700 text-sm mt-1">
+                        Server-side caching improves response times but does NOT save credits. Each API request 
+                        costs 1 credit regardless of cache status. Implement client-side caching to reduce credit consumption.
+                      </p>
+                    </div>
+                    
                     <CodeBlock
                       id="caching-example"
                       language="javascript"
@@ -987,10 +1016,15 @@ async function verifyUser(username) {
   const cacheKey = \`verify:\${username}\`;
   const cached = cache.get(cacheKey);
   
+  // Return cached data WITHOUT making an API call
+  // This saves credits!
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log('Using client cache - no API call, no credits used');
     return cached.data;
   }
   
+  // Make API call - this will cost 1 credit
+  console.log('Making API call - 1 credit will be deducted');
   const response = await fetch('https://www.verifylens.com/api/v1/verify', {
     method: 'POST',
     headers: {
@@ -1001,6 +1035,8 @@ async function verifyUser(username) {
   });
   
   const data = await response.json();
+  
+  // Store in client cache for future requests
   cache.set(cacheKey, { data, timestamp: Date.now() });
   
   return data;
