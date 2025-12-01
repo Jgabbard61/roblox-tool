@@ -3,6 +3,8 @@
 ## Overview
 This migration updates the `customer_stats` view to include credit balance information from the `customer_credits` table.
 
+**Note:** This migration does NOT join with the `api_keys` table because api_keys doesn't have a `customer_id` column. If you see an error about `ak.customer_id`, you may have used an incorrect version of the migration. Use `SUPABASE_MIGRATION_015.sql` or the verified `015_add_credits_to_customer_stats.sql` file.
+
 ## Steps to Apply in Supabase
 
 1. **Open Supabase SQL Editor**
