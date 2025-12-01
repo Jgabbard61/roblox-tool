@@ -1,3 +1,18 @@
+# ⚠️ IMPORTANT: Error Fix Available
+
+If you encountered this error:
+```
+ERROR: 42703: column c.email does not exist
+LINE 9: c.email,
+HINT: Perhaps you meant to reference the column "u.email".
+```
+
+**Solution:** Use **`SUPABASE_MIGRATION_015_FIXED.sql`** which correctly uses `c.contact_email` instead of `c.email`.
+
+📖 **See [MIGRATION_015_FIX_GUIDE.md](../../MIGRATION_015_FIX_GUIDE.md) for complete troubleshooting and fix documentation.**
+
+---
+
 # Apply Migration 015: Add Credit Balance to Customer Stats View
 
 ## Overview
