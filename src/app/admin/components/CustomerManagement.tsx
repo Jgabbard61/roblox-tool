@@ -13,6 +13,10 @@ interface Customer {
   contact_email?: string;
   max_users?: number;
   logo_url?: string;
+  credit_balance?: number;
+  total_credits_purchased?: number;
+  total_credits_used?: number;
+  last_purchase_at?: string;
 }
 
 export default function CustomerManagement() {
@@ -429,6 +433,9 @@ export default function CustomerManagement() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Credit Balance
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Users
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -463,6 +470,16 @@ export default function CustomerManagement() {
                     >
                       {customer.is_active ? '✓ Active' : '✗ Inactive'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {customer.credit_balance !== undefined ? customer.credit_balance.toLocaleString() : '0'} credits
+                    </div>
+                    {customer.credit_balance !== undefined && customer.credit_balance > 0 && (
+                      <div className="text-xs text-gray-500">
+                        💰 {customer.total_credits_purchased?.toLocaleString() || 0} purchased
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {customer.active_users || 0} / {customer.total_users || 0}
