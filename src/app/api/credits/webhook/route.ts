@@ -2,12 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/app/lib/db';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION, getWebhookSecret, getStripeSecretKey } from '@/app/lib/constants/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
+// Initialize Stripe with validated credentials
+const stripe = new Stripe(getStripeSecretKey(), {
+  apiVersion: STRIPE_API_VERSION,
 });
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+// Get webhook secret with validation (will throw if not set)
+const webhookSecret = getWebhookSecret();
 
 /**
  * POST /api/credits/webhook

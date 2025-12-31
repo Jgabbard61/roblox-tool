@@ -66,11 +66,20 @@ export async function checkRateLimit(
       resetTime,
     };
   } catch (error) {
-    console.error('Rate limit check error:', error);
-    // On error, allow the request (fail open)
+    console.error('CRITICAL: Rate limit check error - Redis unavailable:', error);
+    console.error('Rate limiting is currently disabled due to Redis error');
+
+    // SECURITY WARNING: Failing open due to Redis error
+    // In production, consider implementing:
+    // 1. Fail closed (deny requests) if uptime is more important than availability
+    // 2. In-memory fallback rate limiter
+    // 3. Circuit breaker pattern with alerts
+
+    // For now, log prominently and fail open to maintain availability
+    // Set remaining to 0 to signal degraded state in response headers
     return {
       allowed: true,
-      remaining: limit,
+      remaining: 0, // Signal degraded state
       resetTime: new Date(now + (window * 1000)),
     };
   }
@@ -200,11 +209,13 @@ export async function slidingWindowRateLimit(
       retryAfter: allowed === 0 ? Math.ceil((resetTimestamp - now) / 1000) : undefined,
     };
   } catch (error) {
-    console.error('Sliding window rate limit error:', error);
-    // Fail open on error
+    console.error('CRITICAL: Sliding window rate limit error - Redis unavailable:', error);
+    console.error('Rate limiting is currently disabled due to Redis error');
+
+    // SECURITY WARNING: Failing open due to Redis error
     return {
       allowed: true,
-      remaining: limit,
+      remaining: 0, // Signal degraded state
       resetTime: new Date(now + windowMs),
     };
   }
@@ -272,11 +283,13 @@ export async function leakyBucketRateLimit(
       retryAfter,
     };
   } catch (error) {
-    console.error('Leaky bucket rate limit error:', error);
-    // Fail open on error
+    console.error('CRITICAL: Leaky bucket rate limit error - Redis unavailable:', error);
+    console.error('Rate limiting is currently disabled due to Redis error');
+
+    // SECURITY WARNING: Failing open due to Redis error
     return {
       allowed: true,
-      remaining: capacity,
+      remaining: 0, // Signal degraded state
       resetTime: new Date(Date.now() + 3600000),
     };
   }

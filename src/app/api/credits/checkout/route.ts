@@ -19,10 +19,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getCreditPackageById } from '@/app/lib/credits';
 import { query } from '@/app/lib/db';
+import { STRIPE_API_VERSION, getStripeSecretKey } from '@/app/lib/constants/stripe';
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+const stripe = new Stripe(getStripeSecretKey(), {
+  apiVersion: STRIPE_API_VERSION,
 });
 
 export async function POST(request: NextRequest) {
