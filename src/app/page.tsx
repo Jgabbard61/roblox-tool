@@ -700,28 +700,49 @@ function VerifierTool() {
 
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 to-purple-50">
-      {/* Header with Admin Button */}
-      <header className="bg-white shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
+      {/* Header with Branding */}
+      <header className="bg-white shadow-lg sticky top-0 z-50 border-b-2 border-purple-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            {/* Left: Company Branding */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <span className="text-2xl font-bold text-white">VL</span>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Verify Lens
+                </h1>
+                <p className="text-sm text-gray-500 font-medium">Roblox Verifier Tool</p>
+              </div>
+            </div>
+
+            {/* Right: Admin Dashboard Button & User Info */}
+            <div className="flex items-center gap-3">
               {/* Credit Balance or Rate Limit Info */}
               {session ? (
-                <CreditHeader />
+                <div className="hidden sm:block">
+                  <CreditHeader />
+                </div>
               ) : (
-                <div className="text-sm text-gray-600 font-medium">
-                  Free Public Tool - 25 Searches/Hour
+                <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
+                  <span className="text-purple-600">⚡</span>
+                  <div className="text-sm">
+                    <p className="font-semibold text-purple-900">Free Tool</p>
+                    <p className="text-xs text-purple-600">25 Searches/Hour</p>
+                  </div>
                 </div>
               )}
-            </div>
-            <div className="flex gap-3">
+
               {/* Admin Dashboard Button (for Super Admin only) */}
               {session?.user?.role === 'SUPER_ADMIN' && (
                 <button
                   onClick={() => router.push('/admin')}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2 shadow-md"
+                  className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
-                  <span>🔐</span>
+                  <span className="text-lg">🔐</span>
                   <span>Admin Dashboard</span>
                 </button>
               )}
@@ -743,10 +764,10 @@ function VerifierTool() {
           />
         )}
 
-        <div className="rounded-lg bg-white p-8 shadow-xl">
+        <div className="rounded-lg bg-white p-8 shadow-xl border border-purple-100">
           {/* Customer Logo */}
           {customerLogo && (
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-6">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={customerLogo}
@@ -755,10 +776,6 @@ function VerifierTool() {
               />
             </div>
           )}
-
-          <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">
-            Roblox Verifier Tool
-          </h1>
 
           {!isBatchMode && (
             <SearchModeSelector
