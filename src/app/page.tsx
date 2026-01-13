@@ -688,12 +688,15 @@ function VerifierTool() {
   };
 
   if (status === 'loading') {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="text-xl font-medium text-gray-700">Loading...</div>
+      </div>
+    );
   }
 
-  if (!session) {
-    return null;
-  }
+  // Tool is now public - no session check required
+  // Both authenticated and unauthenticated users can use the tool
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
@@ -701,7 +704,13 @@ function VerifierTool() {
         {/* Header Section with Credits and Admin Button */}
         <div className="mb-4 flex justify-between items-center">
           {/* Credit Balance (only for authenticated users) */}
-          {session ? <CreditHeader /> : <div></div>}
+          {session ? (
+            <CreditHeader />
+          ) : (
+            <div className="text-sm text-gray-600">
+              Free Public Tool - 25 Searches/Hour
+            </div>
+          )}
 
           {/* Admin Dashboard Button (for Super Admin only) */}
           {session?.user?.role === 'SUPER_ADMIN' && (
@@ -863,12 +872,25 @@ function VerifierTool() {
             </div>
           )}
 
-          <button
-            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-            className="mt-6 w-full rounded-md bg-red-500 p-3 text-white font-medium hover:bg-red-600 transition"
-          >
-            Logout
-          </button>
+          {/* Show logout button only for authenticated users */}
+          {session && (
+            <button
+              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+              className="mt-6 w-full rounded-md bg-red-500 p-3 text-white font-medium hover:bg-red-600 transition"
+            >
+              Logout
+            </button>
+          )}
+
+          {/* Show login button for unauthenticated users */}
+          {!session && (
+            <button
+              onClick={() => router.push('/auth/signin')}
+              className="mt-6 w-full rounded-md bg-blue-500 p-3 text-white font-medium hover:bg-blue-600 transition"
+            >
+              Admin Login
+            </button>
+          )}
         </div>
       </div>
 
