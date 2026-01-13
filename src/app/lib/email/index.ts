@@ -1,8 +1,8 @@
 /**
  * Email Service Module
- * 
+ *
  * Handles sending emails using Resend
- * 
+ *
  * Email types:
  * - Welcome email (after first purchase)
  * - Purchase confirmation email
@@ -16,6 +16,22 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email configuration
 const FROM_EMAIL = 'VerifyLens <noreply@verifylens.com>';
+
+/**
+ * HTML escape function to prevent XSS attacks in email templates
+ * Escapes: & < > " ' / characters
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '/': '&#x2F;',
+  };
+  return String(text).replace(/[&<>"'/]/g, (char) => map[char]);
+}
 
 // ============================================
 // EMAIL VERIFICATION EMAIL
@@ -59,7 +75,7 @@ export async function sendVerificationEmail(params: VerificationEmailParams) {
           <tr>
             <td style="padding: 40px;">
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
-                Hi <strong>${firstName}</strong>,
+                Hi <strong>${escapeHtml(firstName)}</strong>,
               </p>
               
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
@@ -72,7 +88,7 @@ export async function sendVerificationEmail(params: VerificationEmailParams) {
                   ✅ Your Login Username
                 </p>
                 <p style="margin: 0; color: #15803d; font-size: 18px; font-weight: 700; font-family: monospace;">
-                  ${username}
+                  ${escapeHtml(username)}
                 </p>
                 <p style="margin: 8px 0 0 0; color: #166534; font-size: 12px; line-height: 1.4;">
                   Use this username to log in to your VerifyLens account at <a href="https://www.verifylens.com" style="color: #15803d; text-decoration: none; font-weight: 600;">www.verifylens.com</a>
@@ -204,9 +220,9 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
           <tr>
             <td style="padding: 40px;">
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
-                Hi <strong>${customerName}</strong>,
+                Hi <strong>${escapeHtml(customerName)}</strong>,
               </p>
-              
+
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
                 Thank you for purchasing <strong>${credits} credits</strong>! Your VerifyLens account has been created and you're ready to start verifying Roblox users.
               </p>
@@ -216,14 +232,14 @@ export async function sendWelcomeEmail(params: WelcomeEmailParams) {
                 <tr>
                   <td style="padding: 24px;">
                     <h2 style="margin: 0 0 16px 0; color: #2d3748; font-size: 20px; font-weight: 600;">Your Login Credentials</h2>
-                    
+
                     <p style="margin: 8px 0; color: #4a5568; font-size: 15px;">
-                      <strong>Username:</strong> <span style="color: #667eea; font-family: monospace;">${username}</span>
+                      <strong>Username:</strong> <span style="color: #667eea; font-family: monospace;">${escapeHtml(username)}</span>
                     </p>
-                    
+
                     ${tempPassword ? `
                     <p style="margin: 8px 0; color: #4a5568; font-size: 15px;">
-                      <strong>Temporary Password:</strong> <span style="color: #667eea; font-family: monospace;">${tempPassword}</span>
+                      <strong>Temporary Password:</strong> <span style="color: #667eea; font-family: monospace;">${escapeHtml(tempPassword)}</span>
                     </p>
 
                     <p style="margin: 16px 0 0 0; color: #718096; font-size: 13px; font-style: italic;">
@@ -375,9 +391,9 @@ export async function sendPurchaseConfirmationEmail(params: PurchaseConfirmation
           <tr>
             <td style="padding: 40px;">
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
-                Hi <strong>${customerName}</strong>,
+                Hi <strong>${escapeHtml(customerName)}</strong>,
               </p>
-              
+
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
                 Thank you for your purchase! We've successfully added <strong>${credits} credits</strong> to your VerifyLens account.
               </p>
@@ -511,9 +527,9 @@ export async function sendLowBalanceAlert(params: LowBalanceAlertParams) {
           <tr>
             <td style="padding: 40px;">
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
-                Hi <strong>${customerName}</strong>,
+                Hi <strong>${escapeHtml(customerName)}</strong>,
               </p>
-              
+
               <p style="margin: 0 0 20px 0; color: #2d3748; font-size: 16px; line-height: 1.6;">
                 Your VerifyLens credit balance is running low. You currently have <strong>${currentBalance} credits</strong> remaining.
               </p>

@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/lib/auth';
 import { query } from '@/app/lib/db';
 import Stripe from 'stripe';
+import { STRIPE_API_VERSION, getStripeSecretKey } from '@/app/lib/constants/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
+const stripe = new Stripe(getStripeSecretKey(), {
+  apiVersion: STRIPE_API_VERSION,
 });
 
 /**

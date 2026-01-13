@@ -1,7 +1,7 @@
 
 /**
  * GET /api/credits/verify-payment?session_id=xxx
- * 
+ *
  * Verifies a Stripe checkout session and manually processes credit addition
  * if webhook hasn't fired yet (common in test/sandbox mode)
  */
@@ -9,9 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { query } from '@/app/lib/db';
+import { STRIPE_API_VERSION, getStripeSecretKey } from '@/app/lib/constants/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
+const stripe = new Stripe(getStripeSecretKey(), {
+  apiVersion: STRIPE_API_VERSION,
 });
 
 export async function GET(request: NextRequest) {
