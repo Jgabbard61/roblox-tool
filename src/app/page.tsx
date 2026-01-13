@@ -93,11 +93,13 @@ function VerifierTool() {
   const smartCooldown = useCooldown({ key: 'smart_search', durationSeconds: 30 });
   const displayNameCooldown = useCooldown({ key: 'display_name_search', durationSeconds: 30 });
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    }
-  }, [status, router]);
+  // Removed authentication redirect - tool is now public!
+  // Admin can still log in to access admin dashboard
+  // useEffect(() => {
+  //   if (status === 'unauthenticated') {
+  //     router.push('/auth/signin');
+  //   }
+  // }, [status, router]);
 
   // Fetch customer logo
   useEffect(() => {
@@ -163,14 +165,10 @@ function VerifierTool() {
             
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
-              
-              // Handle insufficient credits (402)
-              if (response.status === 402) {
-                throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
-              }
-              // Handle rate limiting (429)
-              else if (response.status === 429) {
-                throw new Error('Rate limited. Please wait before searching again.');
+
+              // Handle rate limiting (429) - IP-based: 25 searches per hour
+              if (response.status === 429) {
+                throw new Error(errorData.message || 'Rate limit exceeded. Please wait before searching again.');
               }
               // Handle service unavailable (503)
               else if (response.status === 503) {
@@ -233,7 +231,7 @@ function VerifierTool() {
             // If duplicate search, refresh balance to show no credit was deducted
             if (searchData.isDuplicate) {
               console.log('Duplicate search detected - no credit charged (results from cache)');
-              refreshBalance();
+              if (session) refreshBalance();
             }
             
             const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
@@ -299,7 +297,7 @@ function VerifierTool() {
             // If duplicate search, refresh balance to show no credit was deducted
             if (searchData.isDuplicate) {
               console.log('Duplicate search detected - no credit charged (results from cache)');
-              refreshBalance();
+              if (session) refreshBalance();
             }
             
             const users = searchData.data || [];
@@ -476,14 +474,10 @@ function VerifierTool() {
             
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
-              
-              // Handle insufficient credits (402)
-              if (response.status === 402) {
-                throw new Error(errorData.message || 'Insufficient credits. Please purchase more credits to continue.');
-              }
-              // Handle rate limiting (429)
-              else if (response.status === 429) {
-                throw new Error('Rate limited. Please wait before searching again.');
+
+              // Handle rate limiting (429) - IP-based: 25 searches per hour
+              if (response.status === 429) {
+                throw new Error(errorData.message || 'Rate limit exceeded. Please wait before searching again.');
               }
               // Handle service unavailable (503)
               else if (response.status === 503) {
@@ -589,9 +583,9 @@ function VerifierTool() {
       }
     }
 
-    // Auto-refresh credit balance after search completes
-    refreshBalance();
-    
+    // Auto-refresh credit balance after search completes (only for authenticated users)
+    if (session) refreshBalance();
+
     setLoading(false);
   };
 
@@ -706,8 +700,8 @@ function VerifierTool() {
       <div className="w-full max-w-4xl">
         {/* Header Section with Credits and Admin Button */}
         <div className="mb-4 flex justify-between items-center">
-          {/* Credit Balance and Buy Credits */}
-          <CreditHeader />
+          {/* Credit Balance (only for authenticated users) */}
+          {session ? <CreditHeader /> : <div></div>}
 
           {/* Admin Dashboard Button (for Super Admin only) */}
           {session?.user?.role === 'SUPER_ADMIN' && (
