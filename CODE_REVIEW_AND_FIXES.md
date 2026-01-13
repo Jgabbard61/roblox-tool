@@ -94,10 +94,13 @@ Multiple files using different Stripe API versions:
 Centralized Stripe API version:
 ```typescript
 // src/app/lib/constants/stripe.ts
-export const STRIPE_API_VERSION = '2024-11-20.acacia' as const;
+// Note: Version must match what's supported by stripe package 14.5.0
+export const STRIPE_API_VERSION = '2023-10-16' as const;
 ```
 
 All Stripe initializations now use this constant.
+
+**Note:** The API version is constrained by the installed Stripe package (14.5.0). To use newer API versions, upgrade the Stripe package.
 
 **Files Changed:** Same as issue #2
 

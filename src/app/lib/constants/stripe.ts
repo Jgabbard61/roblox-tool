@@ -4,7 +4,8 @@
  */
 
 // Stripe API version - keep this consistent across all Stripe instances
-export const STRIPE_API_VERSION = '2024-11-20.acacia' as const;
+// Note: This must match the version supported by the installed stripe package (14.5.0)
+export const STRIPE_API_VERSION = '2023-10-16' as const;
 
 // Security: Validate required environment variables
 const validateStripeConfig = () => {
