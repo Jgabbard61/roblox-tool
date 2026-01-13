@@ -704,7 +704,7 @@ function VerifierTool() {
       <header className="bg-white shadow-lg sticky top-0 z-50 border-b-2 border-purple-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            {/* Left: Company Branding */}
+            {/* Left: Company Logo & Name */}
             <div className="flex items-center gap-4">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -715,24 +715,22 @@ function VerifierTool() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Verify Lens
                 </h1>
-                <p className="text-sm text-gray-500 font-medium">Roblox Verifier Tool</p>
               </div>
+            </div>
+
+            {/* Center: Main Headline */}
+            <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2">
+              <h2 className="text-3xl font-bold text-gray-800">
+                Roblox Verifier Tool
+              </h2>
             </div>
 
             {/* Right: Admin Dashboard Button & User Info */}
             <div className="flex items-center gap-3">
-              {/* Credit Balance or Rate Limit Info */}
-              {session ? (
+              {/* Credit Balance for authenticated users */}
+              {session && (
                 <div className="hidden sm:block">
                   <CreditHeader />
-                </div>
-              ) : (
-                <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
-                  <span className="text-purple-600">⚡</span>
-                  <div className="text-sm">
-                    <p className="font-semibold text-purple-900">Free Tool</p>
-                    <p className="text-xs text-purple-600">25 Searches/Hour</p>
-                  </div>
                 </div>
               )}
 
@@ -755,14 +753,28 @@ function VerifierTool() {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-4xl">
 
-        {!isBatchMode && (
-          <ForensicMode
-            isEnabled={forensicMode}
-            onToggle={setForensicMode}
-            currentSnapshot={currentSnapshot}
-            query={currentQuery}
-          />
-        )}
+        {/* Forensic Mode & Free Tool Badge */}
+        <div className="flex items-center justify-between mb-4">
+          {!isBatchMode && (
+            <ForensicMode
+              isEnabled={forensicMode}
+              onToggle={setForensicMode}
+              currentSnapshot={currentSnapshot}
+              query={currentQuery}
+            />
+          )}
+
+          {/* Free Tool Badge (for public users) */}
+          {!session && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg shadow-sm">
+              <span className="text-purple-600">⚡</span>
+              <div className="text-sm">
+                <p className="font-semibold text-purple-900">Free Tool</p>
+                <p className="text-xs text-purple-600">25 Searches/Hour</p>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="rounded-lg bg-white p-8 shadow-xl border border-purple-100">
           {/* Customer Logo */}
