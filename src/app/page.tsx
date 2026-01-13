@@ -699,30 +699,40 @@ function VerifierTool() {
   // Both authenticated and unauthenticated users can use the tool
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-      <div className="w-full max-w-4xl">
-        {/* Header Section with Credits and Admin Button */}
-        <div className="mb-4 flex justify-between items-center">
-          {/* Credit Balance (only for authenticated users) */}
-          {session ? (
-            <CreditHeader />
-          ) : (
-            <div className="text-sm text-gray-600">
-              Free Public Tool - 25 Searches/Hour
+    <main className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 to-purple-50">
+      {/* Header with Admin Button */}
+      <header className="bg-white shadow-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex-1">
+              {/* Credit Balance or Rate Limit Info */}
+              {session ? (
+                <CreditHeader />
+              ) : (
+                <div className="text-sm text-gray-600 font-medium">
+                  Free Public Tool - 25 Searches/Hour
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Admin Dashboard Button (for Super Admin only) */}
-          {session?.user?.role === 'SUPER_ADMIN' && (
-            <button
-              onClick={() => router.push('/admin')}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium shadow-md flex items-center gap-2"
-            >
-              <span>🔐</span>
-              <span>Admin Dashboard</span>
-            </button>
-          )}
+            <div className="flex gap-3">
+              {/* Admin Dashboard Button (for Super Admin only) */}
+              {session?.user?.role === 'SUPER_ADMIN' && (
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2 shadow-md"
+                >
+                  <span>🔐</span>
+                  <span>Admin Dashboard</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-4xl">
 
         {!isBatchMode && (
           <ForensicMode
@@ -892,6 +902,7 @@ function VerifierTool() {
             </button>
           )}
         </div>
+      </div>
       </div>
 
       {showDeepContext && selectedUserId && (

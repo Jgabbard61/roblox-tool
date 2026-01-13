@@ -42,11 +42,16 @@ export async function GET(
     const friendsData = await friendsResponse.json();
     const friends: RobloxFriend[] = friendsData.data || [];
 
+    // Debug: Log first friend to check data structure
+    if (friends.length > 0) {
+      console.log('Sample friend data:', JSON.stringify(friends[0], null, 2));
+    }
+
     // If there are no friends, return empty list
     if (friends.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         friends: [],
-        count: 0 
+        count: 0
       });
     }
 
@@ -89,7 +94,10 @@ export async function GET(
 
     // Add avatar URLs and presence data
     const friendsWithDetails: FriendWithAvatar[] = friends.map(friend => ({
-      ...friend,
+      id: friend.id,
+      name: friend.name || '', // Ensure name is never undefined
+      displayName: friend.displayName || friend.name || 'Unknown',
+      hasVerifiedBadge: friend.hasVerifiedBadge || false,
       avatarUrl: `/api/thumbnail?userId=${friend.id}`,
       isOnline: presenceData[friend.id]?.userPresenceType === 2 || presenceData[friend.id]?.userPresenceType === 3,
       presenceType: presenceData[friend.id]?.userPresenceType || 0

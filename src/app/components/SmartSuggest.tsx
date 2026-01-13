@@ -247,19 +247,13 @@ export default function SmartSuggest({
                   />
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onSelect(candidate.user.name)}
-                    className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition font-medium shadow-md"
-                  >
-                    ✓ Select & Verify
-                  </button>
+                {/* Action button */}
+                <div className="flex justify-end">
                   <button
                     onClick={() => onInspect(candidate.user.id)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+                    className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition font-medium shadow-md"
                   >
-                    🔍 Inspect
+                    🔍 Inspect Profile
                   </button>
                 </div>
               </div>
