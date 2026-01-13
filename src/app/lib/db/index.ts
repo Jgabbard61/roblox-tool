@@ -223,13 +223,14 @@ export async function createCustomerWithAdmin(
 }
 
 /**
- * Log a search to search_history
+ * Log a search to search_history (now supports public searches with IP tracking)
  */
 export async function logSearch(params: {
-  userId: number;
+  userId: number | null; // Now nullable for public searches
   customerId: number | null;
+  ipAddress?: string; // NEW: Track IP address for public searches
   searchType: string;
-  searchMode?: 'exact' | 'smart' | 'displayName'; // NEW: Track search mode
+  searchMode?: 'exact' | 'smart' | 'displayName';
   searchQuery: string;
   robloxUsername?: string;
   robloxUserId?: number;
@@ -242,29 +243,60 @@ export async function logSearch(params: {
   errorMessage?: string;
   responseTimeMs?: number;
 }) {
-  await query(
-    `INSERT INTO search_history 
-      (user_id, customer_id, search_type, search_mode, search_query, 
-       roblox_username, roblox_user_id, roblox_display_name, has_verified_badge,
-       result_data, result_count, result_status, error_message, response_time_ms)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-    [
-      params.userId,
-      params.customerId || null,
-      params.searchType,
-      params.searchMode || 'exact', // Default to 'exact' if not provided
-      params.searchQuery,
-      params.robloxUsername || null,
-      params.robloxUserId || null,
-      params.robloxDisplayName || null,
-      params.hasVerifiedBadge !== undefined ? params.hasVerifiedBadge : null,
-      params.resultData ? JSON.stringify(params.resultData) : null,
-      params.resultCount || 0,
-      params.resultStatus,
-      params.errorMessage || null,
-      params.responseTimeMs || null,
-    ]
-  );
+  // Try to insert with ip_address column if available, otherwise skip it
+  // This allows backward compatibility if the column doesn't exist yet
+  try {
+    await query(
+      `INSERT INTO search_history
+        (user_id, customer_id, ip_address, search_type, search_mode, search_query,
+         roblox_username, roblox_user_id, roblox_display_name, has_verified_badge,
+         result_data, result_count, result_status, error_message, response_time_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [
+        params.userId || null,
+        params.customerId || null,
+        params.ipAddress || null,
+        params.searchType,
+        params.searchMode || 'exact',
+        params.searchQuery,
+        params.robloxUsername || null,
+        params.robloxUserId || null,
+        params.robloxDisplayName || null,
+        params.hasVerifiedBadge !== undefined ? params.hasVerifiedBadge : null,
+        params.resultData ? JSON.stringify(params.resultData) : null,
+        params.resultCount || 0,
+        params.resultStatus,
+        params.errorMessage || null,
+        params.responseTimeMs || null,
+      ]
+    );
+  } catch (error) {
+    // If ip_address column doesn't exist, try without it
+    console.warn('Failed to log search with IP address, trying without:', error);
+    await query(
+      `INSERT INTO search_history
+        (user_id, customer_id, search_type, search_mode, search_query,
+         roblox_username, roblox_user_id, roblox_display_name, has_verified_badge,
+         result_data, result_count, result_status, error_message, response_time_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [
+        params.userId || null,
+        params.customerId || null,
+        params.searchType,
+        params.searchMode || 'exact',
+        params.searchQuery,
+        params.robloxUsername || null,
+        params.robloxUserId || null,
+        params.robloxDisplayName || null,
+        params.hasVerifiedBadge !== undefined ? params.hasVerifiedBadge : null,
+        params.resultData ? JSON.stringify(params.resultData) : null,
+        params.resultCount || 0,
+        params.resultStatus,
+        params.errorMessage || null,
+        params.responseTimeMs || null,
+      ]
+    );
+  }
 }
 
 /**

@@ -1,4 +1,4 @@
-// app/api/search/route.tsx - Production Ready with All Protections + Credit System
+// app/api/search/route.tsx - Public Free Tool Version
 import { NextResponse, NextRequest } from "next/server";
 import {
   fetchWithRateLimitDetection,
@@ -15,13 +15,7 @@ import { robloxApiQueue } from "@/app/lib/utils/request-queue";
 import { robloxApiCircuitBreaker } from "@/app/lib/utils/circuit-breaker";
 import { metricsCollector } from "@/app/lib/utils/monitoring";
 import { logSearch } from "@/app/lib/db";
-import { 
-  checkSufficientCredits, 
-  deductCredits, 
-  getCustomerCredits,
-  recordFreeSearch
-} from "@/app/lib/credits";
-import { getSearchCache, setSearchCache } from "@/app/lib/search-cache";
+import { checkIPRateLimit, getClientIP } from "@/app/lib/utils/ip-rate-limit";
 
 // Define TypeScript interfaces for Roblox API responses
 interface RobloxUser {
@@ -54,16 +48,29 @@ export async function GET(request: NextRequest) {
   const start = Date.now();
   let fromCache = false;
 
-  // Get user info from headers (set by middleware)
-  const userId = request.headers.get('X-User-Id');
-  const customerId = request.headers.get('X-Customer-Id');
-
   try {
+    // Get client IP for rate limiting
+    const clientIP = getClientIP(request);
+
+    // Check IP-based rate limit (25 per hour)
+    const rateLimitCheck = checkIPRateLimit(clientIP);
+    if (!rateLimitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: "rate_limit_exceeded",
+          message: rateLimitCheck.message,
+          remaining: 0,
+          resetTime: rateLimitCheck.resetTime.toISOString(),
+        } as ErrorResponse,
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const keyword = searchParams.get("keyword");
     const limit = searchParams.get("limit") || "10";
     const cursor = searchParams.get("cursor");
-    const searchMode = (searchParams.get("searchMode") || "smart") as 'smart' | 'displayName'; // Get search mode from query param
+    const searchMode = (searchParams.get("searchMode") || "smart") as 'smart' | 'displayName';
 
     // Validation
     if (!keyword) {
@@ -78,100 +85,6 @@ export async function GET(request: NextRequest) {
         { error: "Keyword must be at least 3 characters" } as ErrorResponse,
         { status: 400 }
       );
-    }
-
-    // ============================================
-    // DUPLICATE SEARCH DETECTION (for non-SUPER_ADMIN users)
-    // ============================================
-    let cachedResult = null;
-    
-    if (customerId && customerId !== 'null') {
-      const customerIdInt = parseInt(customerId);
-      
-      // Determine if this is a smart or exact search
-      const cacheSearchType = (searchMode === 'smart' || searchMode === 'displayName') ? 'smart' : 'exact';
-      
-      // Check if this exact search has been performed before
-      cachedResult = await getSearchCache(customerIdInt, keyword, cacheSearchType);
-      
-      if (cachedResult) {
-        console.log(`[Duplicate Search Detected] Customer ${customerIdInt} searched for "${keyword}" (${cacheSearchType}) - returning cached result (no credit charge)`);
-        
-        // Return cached result immediately without charging credits
-        const cachedData = typeof cachedResult.result_data === 'string' 
-          ? JSON.parse(cachedResult.result_data) 
-          : cachedResult.result_data;
-        
-        // Extract users and searchResults from cached data
-        const cachedUsers = cachedData.users || [];
-        const cachedSearchResults = cachedData.searchResults || {};
-        
-        // Log this duplicate search in search history (but NOT in transactions)
-        if (userId) {
-          const firstResult = cachedUsers.length > 0 ? cachedUsers[0] : null;
-          
-          const searchLog = await logSearch({
-            userId: parseInt(userId),
-            customerId: customerIdInt,
-            searchType: /^\d+$/.test(keyword) ? 'userId' : 'username',
-            searchMode,
-            searchQuery: keyword,
-            robloxUsername: firstResult?.name,
-            robloxUserId: firstResult?.id,
-            robloxDisplayName: firstResult?.displayName,
-            hasVerifiedBadge: firstResult?.hasVerifiedBadge,
-            resultData: cachedData,
-            resultCount: cachedResult.result_count,
-            resultStatus: cachedResult.result_status,
-            responseTimeMs: undefined, // undefined for cached results (will be stored as NULL in DB)
-          }).catch(err => {
-            console.error('Failed to log duplicate search:', err);
-            return null;
-          });
-          
-          // Record free search transaction (0 credits)
-          if (searchLog) {
-            const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
-            
-            await recordFreeSearch({
-              customerId: customerIdInt,
-              userId: parseInt(userId),
-              searchHistoryId,
-              description: `Duplicate ${cacheSearchType} search for "${keyword}" (cached result, no charge)`,
-            }).catch(err => {
-              console.error('Failed to record free search transaction:', err);
-            });
-          }
-        }
-        
-        // Return in the same format as a regular API response
-        return NextResponse.json({
-          previousPageCursor: cachedSearchResults.previousPageCursor,
-          nextPageCursor: cachedSearchResults.nextPageCursor,
-          data: cachedUsers,
-          fromCache: true,
-          isDuplicate: true,
-          cacheTtl: CACHE_TTL.DUPLICATE_SEARCH,
-        });
-      }
-      
-      // Not a duplicate - check if customer has sufficient credits
-      const hasSufficientCredits = await checkSufficientCredits(customerIdInt, 1);
-      
-      if (!hasSufficientCredits) {
-        // Get current balance for error message
-        const credits = await getCustomerCredits(customerIdInt);
-        const currentBalance = credits?.balance || 0;
-        
-        return NextResponse.json(
-          { 
-            error: "insufficient_credits",
-            message: `Insufficient credits. You have ${currentBalance} credits. Please purchase more credits to continue.`,
-            currentBalance,
-          } as ErrorResponse,
-          { status: 402 } // 402 Payment Required
-        );
-      }
     }
 
     // Generate cache key
@@ -280,6 +193,7 @@ export async function GET(request: NextRequest) {
       data: users,
       fromCache,
       cacheTtl: ttl,
+      searchesRemaining: rateLimitCheck.remaining,
     };
 
     // Log metrics
@@ -294,111 +208,34 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
     });
 
-    // Log search to database and handle credit deduction
-    if (userId) {
-      const responseTime = Date.now() - start;
-      
-      // Determine search type (simple heuristic)
-      const searchType = /^\d+$/.test(keyword) ? 'userId' : 'username';
-      
-      // Get first result if exists
-      const firstResult = users.length > 0 ? users[0] : null;
-      
-      // Log search first (get search history ID)
-      const searchLogPromise = logSearch({
-        userId: parseInt(userId),
-        customerId: customerId && customerId !== 'null' ? parseInt(customerId) : null,
-        searchType,
-        searchMode, // Pass the search mode (smart or displayName)
-        searchQuery: keyword,
-        robloxUsername: firstResult?.name,
-        robloxUserId: firstResult?.id,
-        robloxDisplayName: firstResult?.displayName,
-        hasVerifiedBadge: firstResult?.hasVerifiedBadge,
-        resultData: { users, searchResults },
-        resultCount: users.length,
-        resultStatus: users.length > 0 ? 'success' : 'no_results',
-        responseTimeMs: responseTime,
-      }).catch(err => {
-        console.error('Failed to log search:', err);
-        return null;
-      });
+    // Log search to database (async, don't wait)
+    const responseTime = Date.now() - start;
+    const searchType = /^\d+$/.test(keyword) ? 'userId' : 'username';
+    const firstResult = users.length > 0 ? users[0] : null;
 
-      // ============================================
-      // CREDIT DEDUCTION AND CACHING (for non-SUPER_ADMIN users)
-      // ============================================
-      if (customerId && customerId !== 'null') {
-        const customerIdInt = parseInt(customerId);
-        const userIdInt = parseInt(userId);
-        
-        // Determine if we should deduct credits
-        let shouldDeductCredits = false;
-        let deductionReason = '';
-        const cacheSearchType = (searchMode === 'smart' || searchMode === 'displayName') ? 'smart' : 'exact';
-        
-        if (searchMode === 'smart' || searchMode === 'displayName') {
-          // Smart Match and Display Name: ALWAYS deduct 1 credit
-          shouldDeductCredits = true;
-          deductionReason = `${searchMode === 'smart' ? 'Smart' : 'Display Name'} search for "${keyword}"`;
-        } else {
-          // Exact Match: Only deduct if results found
-          if (users.length > 0) {
-            shouldDeductCredits = true;
-            deductionReason = `Exact search for "${keyword}" (results found)`;
-          }
-          // If no results, it's FREE (shouldDeductCredits = false)
-        }
-
-        // Cache the search result (for future duplicate detection)
-        setSearchCache({
-          customerId: customerIdInt,
-          searchTerm: keyword,
-          searchType: cacheSearchType,
-          resultData: { users, searchResults },
-          resultCount: users.length,
-          resultStatus: users.length > 0 ? 'success' : 'no_results',
-        }).catch(err => {
-          console.error('Failed to cache search result:', err);
-        });
-
-        // Handle credit transaction (async, don't wait)
-        searchLogPromise.then(searchLog => {
-          const searchHistoryId = searchLog ? parseInt(searchLog as unknown as string) : undefined;
-          
-          if (shouldDeductCredits) {
-            // Deduct credits for this search
-            deductCredits({
-              customerId: customerIdInt,
-              userId: userIdInt,
-              amount: 1,
-              searchHistoryId,
-              description: deductionReason,
-            }).catch(err => {
-              console.error('Failed to deduct credits:', err);
-              // Don't fail the request if credit deduction fails
-              // This is a critical error that should be monitored
-            });
-          } else {
-            // Record a free search (0 credits) for exact searches with no results
-            console.log(`[Credits] No deduction for exact search with no results: "${keyword}"`);
-            recordFreeSearch({
-              customerId: customerIdInt,
-              userId: userIdInt,
-              searchHistoryId,
-              description: `Exact search for "${keyword}" (no results, no charge)`,
-            }).catch(err => {
-              console.error('Failed to record free search transaction:', err);
-            });
-          }
-        });
-      }
-    }
+    logSearch({
+      userId: null, // No user ID for public searches
+      customerId: null, // No customer ID for public searches
+      ipAddress: clientIP, // Log IP address
+      searchType,
+      searchMode,
+      searchQuery: keyword,
+      robloxUsername: firstResult?.name,
+      robloxUserId: firstResult?.id,
+      robloxDisplayName: firstResult?.displayName,
+      hasVerifiedBadge: firstResult?.hasVerifiedBadge,
+      resultData: { users, searchResults },
+      resultCount: users.length,
+      resultStatus: users.length > 0 ? 'success' : 'no_results',
+      responseTimeMs: responseTime,
+    }).catch(err => {
+      console.error('Failed to log search:', err);
+    });
 
     return NextResponse.json(responseData);
   } catch (error) {
     // Handle rate limit errors
     if (error instanceof RateLimitError) {
-      // Log metrics
       metricsCollector.log({
         endpoint: "/api/search",
         method: "GET",
@@ -423,7 +260,6 @@ export async function GET(request: NextRequest) {
 
     // Handle circuit breaker errors
     if (error instanceof Error && error.message.includes("Circuit breaker is OPEN")) {
-      // Log metrics
       metricsCollector.log({
         endpoint: "/api/search",
         method: "GET",
@@ -446,8 +282,7 @@ export async function GET(request: NextRequest) {
 
     // Handle other errors
     console.error("Search API error:", error);
-    
-    // Log metrics
+
     metricsCollector.log({
       endpoint: "/api/search",
       method: "GET",

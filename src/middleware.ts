@@ -14,14 +14,20 @@ export async function middleware(request: NextRequest) {
   });
 
   // Public paths that don't require authentication
+  // NOTE: Tool is now free and public - only admin routes require auth
   const publicPaths = [
-    '/auth/signin',
-    '/api/auth',
-    '/api/health',
-    '/api/v1/keys/create',  // Public API endpoint for creating new customers
-    '/api/v1/verify',        // Public API endpoints for verification (with API key)
-    '/api/v1/usage',         // Public API endpoints for usage (with API key)
-    '/api/v1/credits',       // Public API endpoints for credits (with API key)
+    '/',                     // Main search page is now public
+    '/auth/signin',          // Login page for admins
+    '/api/auth',             // Auth API routes
+    '/api/health',           // Health check
+    '/api/search',           // PUBLIC: Main search API
+    '/api/roblox',           // PUBLIC: Roblox data API
+    '/api/thumbnail',        // PUBLIC: Thumbnail API
+    '/api/profile',          // PUBLIC: Profile API
+    '/api/friends',          // PUBLIC: Friends API
+    '/api/forensic',         // PUBLIC: Forensic API
+    '/api/usage-stats',      // PUBLIC: Usage stats
+    '/api/customer-logo',    // PUBLIC: Customer logos
     '/_next',
     '/favicon.ico',
   ];
