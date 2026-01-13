@@ -485,18 +485,18 @@ export default function DeepContext({ userId, onClose }: DeepContextProps) {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-2 mb-1">
                                   <p className="font-bold text-gray-800 truncate">
-                                    {friend.displayName}
+                                    {friend.displayName || 'Unknown'}
                                   </p>
                                   {friend.hasVerifiedBadge && (
-                                    <span className="text-blue-500" title="Verified Badge">
+                                    <span className="text-blue-500 text-lg" title="Verified Badge">
                                       ✓
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-600 truncate">
-                                  @{friend.name}
+                                <p className="text-sm text-gray-600 font-medium truncate">
+                                  @{friend.name || `User_${friend.id}`}
                                 </p>
                                 {friend.isOnline && (
                                   <p className="text-xs text-green-600 font-medium mt-1">
