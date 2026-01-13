@@ -15,7 +15,6 @@ import DisplayNameResults from './components/DisplayNameResults';
 import NoResultsModal from './components/NoResultsModal';
 import CreditHeader from './components/CreditHeader';
 import { useCooldown } from './hooks/useCooldown';
-import { getTopSuggestions } from './lib/ranking';
 import { useCreditBalance } from './context/CreditContext';
 
 function normalizeInput(rawInput: string): { type: 'username' | 'displayName' | 'userId' | 'url' | 'invalid'; value: string; userId?: string } {
@@ -222,19 +221,20 @@ function VerifierTool() {
             }
             
             const searchData = await response.json();
-            
+
             // ALWAYS trigger cooldown for smart searches (prevents abuse)
             if (!isCurrentlyBatchMode) {
               smartCooldown.startCooldown();
             }
-            
+
             // If duplicate search, refresh balance to show no credit was deducted
             if (searchData.isDuplicate) {
               console.log('Duplicate search detected - no credit charged (results from cache)');
               if (session) refreshBalance();
             }
-            
-            const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+
+            // Data is already ranked server-side for security
+            const candidates = searchData.data || [];
             
             if (!isCurrentlyBatchMode) {
               setScoredCandidates(candidates);
@@ -415,9 +415,10 @@ function VerifierTool() {
               throw new Error(errorData.message || 'Roblox API error');
             }
           }
-          
+
           const searchData = await response.json();
-          const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+          // Data is already ranked server-side for security
+          const candidates = searchData.data || [];
           
           if (!isCurrentlyBatchMode) {
             setScoredCandidates(candidates);
@@ -488,9 +489,10 @@ function VerifierTool() {
                 throw new Error(errorData.message || 'Roblox API error');
               }
             }
-            
+
             const searchData = await response.json();
-            const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+            // Data is already ranked server-side for security
+            const candidates = searchData.data || [];
             
             if (!isCurrentlyBatchMode) {
               setScoredCandidates(candidates);
@@ -658,7 +660,8 @@ function VerifierTool() {
         }
         
         const searchData = await response.json();
-        const candidates = getTopSuggestions(noResultsQuery, searchData.data || [], 10);
+        // Data is already ranked server-side for security
+        const candidates = searchData.data || [];
         
         setScoredCandidates(candidates);
         setOriginalDisplayNameQuery(noResultsQuery);
@@ -933,6 +936,18 @@ function VerifierTool() {
         </div>
       </div>
       </div>
+
+      {/* Copyright Footer */}
+      <footer className="py-6 px-4 text-center border-t border-purple-100 bg-white/50">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-sm text-gray-600">
+            © {new Date().getFullYear()} <span className="font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Verify Lens</span>. All rights reserved.
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Unauthorized reproduction or distribution of this software is prohibited.
+          </p>
+        </div>
+      </footer>
 
       {showDeepContext && selectedUserId && (
         <DeepContext
