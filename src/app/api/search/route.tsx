@@ -43,11 +43,15 @@ const RANKING_WEIGHTS = {
   profileCompleteness: 0.10,
 };
 
-function normalizeString(str: string): string {
+function normalizeString(str: string | undefined | null): string {
+  if (!str) return '';
   return str.toLowerCase().trim();
 }
 
 function jaroWinkler(s1: string, s2: string): number {
+  // Handle empty strings
+  if (!s1 || !s2) return 0;
+
   const longer = s1.length > s2.length ? s1 : s2;
   const shorter = s1.length > s2.length ? s2 : s1;
 
@@ -94,23 +98,28 @@ function jaroWinkler(s1: string, s2: string): number {
 }
 
 function calculateNameSimilarity(query: string, candidate: RobloxUser): number {
+  if (!query) return 0;
+
   const normalizedQuery = normalizeString(query);
   const normalizedUsername = normalizeString(candidate.name);
   const normalizedDisplay = normalizeString(candidate.displayName);
 
-  if (normalizedDisplay === normalizedQuery) return 1.0;
-  if (normalizedUsername === normalizedQuery) return 0.95;
-  if (normalizedDisplay.startsWith(normalizedQuery)) return 0.85;
-  if (normalizedUsername.startsWith(normalizedQuery)) return 0.80;
-  if (normalizedDisplay.includes(normalizedQuery)) return 0.70;
-  if (normalizedUsername.includes(normalizedQuery)) return 0.65;
+  // If both username and display name are empty, return 0
+  if (!normalizedUsername && !normalizedDisplay) return 0;
 
-  const displaySimilarity = jaroWinkler(normalizedQuery, normalizedDisplay);
-  const usernameSimilarity = jaroWinkler(normalizedQuery, normalizedUsername);
+  if (normalizedDisplay && normalizedDisplay === normalizedQuery) return 1.0;
+  if (normalizedUsername && normalizedUsername === normalizedQuery) return 0.95;
+  if (normalizedDisplay && normalizedDisplay.startsWith(normalizedQuery)) return 0.85;
+  if (normalizedUsername && normalizedUsername.startsWith(normalizedQuery)) return 0.80;
+  if (normalizedDisplay && normalizedDisplay.includes(normalizedQuery)) return 0.70;
+  if (normalizedUsername && normalizedUsername.includes(normalizedQuery)) return 0.65;
+
+  const displaySimilarity = normalizedDisplay ? jaroWinkler(normalizedQuery, normalizedDisplay) : 0;
+  const usernameSimilarity = normalizedUsername ? jaroWinkler(normalizedQuery, normalizedUsername) : 0;
   const maxSimilarity = Math.max(displaySimilarity, usernameSimilarity);
 
-  const displayDistance = levenshtein.get(normalizedQuery, normalizedDisplay);
-  const usernameDistance = levenshtein.get(normalizedQuery, normalizedUsername);
+  const displayDistance = normalizedDisplay ? levenshtein.get(normalizedQuery, normalizedDisplay) : 999;
+  const usernameDistance = normalizedUsername ? levenshtein.get(normalizedQuery, normalizedUsername) : 999;
   const minDistance = Math.min(displayDistance, usernameDistance);
 
   if (minDistance <= 2) return Math.max(maxSimilarity, 0.75);
