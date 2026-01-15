@@ -1,5 +1,6 @@
 // app/api/search/route.tsx - Public Free Tool Version
 import { NextResponse, NextRequest } from "next/server";
+import levenshtein from 'fast-levenshtein';
 import {
   fetchWithRateLimitDetection,
   RateLimitError,
@@ -16,6 +17,173 @@ import { robloxApiCircuitBreaker } from "@/app/lib/utils/circuit-breaker";
 import { metricsCollector } from "@/app/lib/utils/monitoring";
 import { logSearch } from "@/app/lib/db";
 import { checkIPRateLimit, getClientIP } from "@/app/lib/utils/ip-rate-limit";
+
+// ============================================================================
+// SERVER-SIDE RANKING ALGORITHM (Protected - Not Exposed to Client)
+// ============================================================================
+
+interface ScoredCandidate {
+  user: RobloxUser;
+  confidence: number;
+  signals: {
+    nameSimilarity: number;
+    accountSignals: number;
+    keywordHits: number;
+    groupOverlap: number;
+    profileCompleteness: number;
+  };
+  breakdown: string[];
+}
+
+const RANKING_WEIGHTS = {
+  nameSimilarity: 0.40,
+  accountSignals: 0.25,
+  keywordHits: 0.15,
+  groupOverlap: 0.10,
+  profileCompleteness: 0.10,
+};
+
+function normalizeString(str: string): string {
+  return str.toLowerCase().trim();
+}
+
+function jaroWinkler(s1: string, s2: string): number {
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+
+  if (longer.length === 0) return 1.0;
+
+  const matchDistance = Math.floor(longer.length / 2) - 1;
+  const longerMatches = new Array(longer.length).fill(false);
+  const shorterMatches = new Array(shorter.length).fill(false);
+
+  let matches = 0;
+  for (let i = 0; i < shorter.length; i++) {
+    const start = Math.max(0, i - matchDistance);
+    const end = Math.min(i + matchDistance + 1, longer.length);
+
+    for (let j = start; j < end; j++) {
+      if (longerMatches[j] || shorter[i] !== longer[j]) continue;
+      shorterMatches[i] = true;
+      longerMatches[j] = true;
+      matches++;
+      break;
+    }
+  }
+
+  if (matches === 0) return 0.0;
+
+  let transpositions = 0;
+  let k = 0;
+  for (let i = 0; i < shorter.length; i++) {
+    if (!shorterMatches[i]) continue;
+    while (!longerMatches[k]) k++;
+    if (shorter[i] !== longer[k]) transpositions++;
+    k++;
+  }
+
+  const jaro = (matches / shorter.length + matches / longer.length + (matches - transpositions / 2) / matches) / 3;
+
+  let prefixLength = 0;
+  for (let i = 0; i < Math.min(4, shorter.length); i++) {
+    if (s1[i] === s2[i]) prefixLength++;
+    else break;
+  }
+
+  return jaro + prefixLength * 0.1 * (1 - jaro);
+}
+
+function calculateNameSimilarity(query: string, candidate: RobloxUser): number {
+  const normalizedQuery = normalizeString(query);
+  const normalizedUsername = normalizeString(candidate.name);
+  const normalizedDisplay = normalizeString(candidate.displayName);
+
+  if (normalizedDisplay === normalizedQuery) return 1.0;
+  if (normalizedUsername === normalizedQuery) return 0.95;
+  if (normalizedDisplay.startsWith(normalizedQuery)) return 0.85;
+  if (normalizedUsername.startsWith(normalizedQuery)) return 0.80;
+  if (normalizedDisplay.includes(normalizedQuery)) return 0.70;
+  if (normalizedUsername.includes(normalizedQuery)) return 0.65;
+
+  const displaySimilarity = jaroWinkler(normalizedQuery, normalizedDisplay);
+  const usernameSimilarity = jaroWinkler(normalizedQuery, normalizedUsername);
+  const maxSimilarity = Math.max(displaySimilarity, usernameSimilarity);
+
+  const displayDistance = levenshtein.get(normalizedQuery, normalizedDisplay);
+  const usernameDistance = levenshtein.get(normalizedQuery, normalizedUsername);
+  const minDistance = Math.min(displayDistance, usernameDistance);
+
+  if (minDistance <= 2) return Math.max(maxSimilarity, 0.75);
+  if (minDistance <= 3) return Math.max(maxSimilarity, 0.60);
+
+  return maxSimilarity;
+}
+
+function calculateAccountSignals(candidate: RobloxUser): number {
+  let score = 0;
+  if (candidate.hasVerifiedBadge) score += 0.4;
+
+  if (candidate.created) {
+    const ageInDays = (Date.now() - new Date(candidate.created).getTime()) / (1000 * 60 * 60 * 24);
+    if (ageInDays > 365 * 3) score += 0.3;
+    else if (ageInDays > 365) score += 0.2;
+    else if (ageInDays > 90) score += 0.1;
+  } else {
+    score += 0.15;
+  }
+
+  if (candidate.description && candidate.description.length > 10) score += 0.3;
+  else if (candidate.description) score += 0.15;
+
+  return Math.min(score, 1.0);
+}
+
+function calculateProfileCompleteness(candidate: RobloxUser): number {
+  let score = 0;
+  if (candidate.displayName && candidate.displayName !== candidate.name) score += 0.3;
+  if (candidate.description) {
+    if (candidate.description.length > 50) score += 0.4;
+    else if (candidate.description.length > 10) score += 0.3;
+    else score += 0.1;
+  }
+  if (candidate.hasVerifiedBadge) score += 0.3;
+  return Math.min(score, 1.0);
+}
+
+function rankCandidates(query: string, candidates: RobloxUser[]): ScoredCandidate[] {
+  const scored = candidates.map(candidate => {
+    const signals = {
+      nameSimilarity: calculateNameSimilarity(query, candidate),
+      accountSignals: calculateAccountSignals(candidate),
+      keywordHits: 0.5,
+      groupOverlap: 0.5,
+      profileCompleteness: calculateProfileCompleteness(candidate),
+    };
+
+    const confidence = Math.round(
+      (signals.nameSimilarity * RANKING_WEIGHTS.nameSimilarity +
+       signals.accountSignals * RANKING_WEIGHTS.accountSignals +
+       signals.keywordHits * RANKING_WEIGHTS.keywordHits +
+       signals.groupOverlap * RANKING_WEIGHTS.groupOverlap +
+       signals.profileCompleteness * RANKING_WEIGHTS.profileCompleteness) * 100
+    );
+
+    const breakdown: string[] = [];
+    if (signals.nameSimilarity >= 0.9) breakdown.push('Exact name match');
+    else if (signals.nameSimilarity >= 0.8) breakdown.push('Strong name similarity');
+    else if (signals.nameSimilarity >= 0.6) breakdown.push('Moderate name similarity');
+
+    if (candidate.hasVerifiedBadge) breakdown.push('Verified badge');
+    if (signals.accountSignals >= 0.7) breakdown.push('Established account');
+    if (signals.profileCompleteness >= 0.7) breakdown.push('Complete profile');
+
+    return { user: candidate, confidence, signals, breakdown };
+  });
+
+  return scored.sort((a, b) => b.confidence - a.confidence);
+}
+
+// ============================================================================
 
 // Define TypeScript interfaces for Roblox API responses
 interface RobloxUser {
@@ -187,14 +355,28 @@ export async function GET(request: NextRequest) {
       isBanned: user.isBanned,
     }));
 
-    const responseData = {
-      previousPageCursor: searchResults.previousPageCursor,
-      nextPageCursor: searchResults.nextPageCursor,
-      data: users,
-      fromCache,
-      cacheTtl: ttl,
-      searchesRemaining: rateLimitCheck.remaining,
-    };
+    // Apply server-side ranking for smart mode
+    let responseData;
+    if (searchMode === 'smart') {
+      const rankedResults = rankCandidates(keyword, users);
+      responseData = {
+        previousPageCursor: searchResults.previousPageCursor,
+        nextPageCursor: searchResults.nextPageCursor,
+        data: rankedResults,
+        fromCache,
+        cacheTtl: ttl,
+        searchesRemaining: rateLimitCheck.remaining,
+      };
+    } else {
+      responseData = {
+        previousPageCursor: searchResults.previousPageCursor,
+        nextPageCursor: searchResults.nextPageCursor,
+        data: users,
+        fromCache,
+        cacheTtl: ttl,
+        searchesRemaining: rateLimitCheck.remaining,
+      };
+    }
 
     // Log metrics
     metricsCollector.log({
