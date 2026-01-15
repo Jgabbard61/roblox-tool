@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import Papa from 'papaparse';
 import Image from 'next/image';
@@ -10,10 +10,12 @@ import { useRouter } from 'next/navigation';
 import DeepContext from './components/DeepContext';
 import SmartSuggest from './components/SmartSuggest';
 import ForensicMode from './components/ForensicMode';
-import SearchModeSelector, { SearchMode } from './components/SearchModeSelector';
+import { SearchMode } from './components/SearchModeSelector';
 import DisplayNameResults from './components/DisplayNameResults';
 import NoResultsModal from './components/NoResultsModal';
-import CreditHeader from './components/CreditHeader';
+import HeroHeader from './components/HeroHeader';
+import PartnerFooter from './components/PartnerFooter';
+import ModernSearchCard from './components/ModernSearchCard';
 import { useCooldown } from './hooks/useCooldown';
 import { getTopSuggestions } from './lib/ranking';
 import { useCreditBalance } from './context/CreditContext';
@@ -87,7 +89,8 @@ function VerifierTool() {
   const [displayNameUsers, setDisplayNameUsers] = useState<UserResult[]>([]);
   const [showNoResultsModal, setShowNoResultsModal] = useState<boolean>(false);
   const [noResultsQuery, setNoResultsQuery] = useState<string>('');
-  const [customerLogo, setCustomerLogo] = useState<string | null>(null);
+  // Customer logo functionality - can be re-enabled if needed
+  // const [customerLogo, setCustomerLogo] = useState<string | null>(null);
 
   // Cooldown hooks for Smart and Display Name modes
   const smartCooldown = useCooldown({ key: 'smart_search', durationSeconds: 30 });
@@ -101,26 +104,26 @@ function VerifierTool() {
   //   }
   // }, [status, router]);
 
-  // Fetch customer logo
-  useEffect(() => {
-    const fetchCustomerLogo = async () => {
-      if (session?.user?.customerId) {
-        try {
-          const res = await fetch(`/api/customer-logo/${session.user.customerId}`);
-          if (res.ok) {
-            const data = await res.json();
-            setCustomerLogo(data.logoUrl);
-          }
-        } catch (error) {
-          console.error('Failed to fetch customer logo:', error);
-        }
-      }
-    };
-
-    if (session) {
-      fetchCustomerLogo();
-    }
-  }, [session]);
+  // Customer logo fetch - commented out as part of UI redesign
+  // Can be re-enabled if needed for customer-specific branding
+  // useEffect(() => {
+  //   const fetchCustomerLogo = async () => {
+  //     if (session?.user?.customerId) {
+  //       try {
+  //         const res = await fetch(`/api/customer-logo/${session.user.customerId}`);
+  //         if (res.ok) {
+  //           const data = await res.json();
+  //           setCustomerLogo(data.logoUrl);
+  //         }
+  //       } catch (error) {
+  //         console.error('Failed to fetch customer logo:', error);
+  //       }
+  //     }
+  //   };
+  //   if (session) {
+  //     fetchCustomerLogo();
+  //   }
+  // }, [session]);
 
   const handleSubmit = async (e: React.FormEvent, batchInputs: string[] = []) => {
     e.preventDefault();
@@ -699,212 +702,166 @@ function VerifierTool() {
   // Both authenticated and unauthenticated users can use the tool
 
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 to-purple-50">
-      {/* Header with Admin Button */}
-      <header className="bg-white shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
-              {/* Credit Balance or Rate Limit Info */}
-              {session ? (
-                <CreditHeader />
-              ) : (
-                <div className="text-sm text-gray-600 font-medium">
-                  Free Public Tool - 25 Searches/Hour
-                </div>
-              )}
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      {/* Hero Header */}
+      <HeroHeader />
+
+      {/* Main Content */}
+      <main className="flex-1 -mt-8 relative z-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+          {/* Forensic Mode Toggle */}
+          {!isBatchMode && (
+            <div className="mb-6">
+              <ForensicMode
+                isEnabled={forensicMode}
+                onToggle={setForensicMode}
+                currentSnapshot={currentSnapshot}
+                query={currentQuery}
+              />
             </div>
-            <div className="flex gap-3">
-              {/* Admin Dashboard Button (for Super Admin only) */}
-              {session?.user?.role === 'SUPER_ADMIN' && (
+          )}
+
+          {/* Modern Search Card */}
+          <ModernSearchCard
+            searchMode={searchMode}
+            onModeChange={setSearchMode}
+            input={input}
+            onInputChange={setInput}
+            includeBanned={includeBanned}
+            onIncludeBannedChange={setIncludeBanned}
+            onSubmit={(e) => handleSubmit(e)}
+            loading={loading}
+            smartCooldown={smartCooldown}
+            displayNameCooldown={displayNameCooldown}
+            onFileUpload={handleBatchUpload}
+          />
+
+          {/* Results Section */}
+          <div className="mt-8 space-y-6">
+            {/* Loading indicator */}
+            {loading && (
+              <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-purple-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600 font-medium">Searching Roblox database...</p>
+              </div>
+            )}
+
+            {/* Single result */}
+            {result && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Search Result
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-4">{result}</div>
+              </div>
+            )}
+
+            {/* Display Name Results */}
+            {!isBatchMode && searchMode === 'displayName' && displayNameUsers.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <DisplayNameResults
+                  users={displayNameUsers}
+                  query={originalDisplayNameQuery}
+                  onSelect={handleSelectCandidate}
+                  onInspect={handleInspectCandidate}
+                  loading={loading}
+                />
+              </div>
+            )}
+
+            {/* Smart Suggest Results */}
+            {!isBatchMode && searchMode === 'smart' && scoredCandidates.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <SmartSuggest
+                  candidates={scoredCandidates}
+                  query={originalDisplayNameQuery}
+                  onSelect={handleSelectCandidate}
+                  onInspect={handleInspectCandidate}
+                  loading={loading}
+                />
+              </div>
+            )}
+
+            {/* Batch Results */}
+            {isBatchMode && batchResults.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Batch Results</h3>
+                  <button
+                    onClick={() => exportToCSV(batchResults)}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium text-sm flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Input</th>
+                        <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                        <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {batchResults.map((out, index) => (
+                        <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                          <td className="py-3 px-4 text-sm text-gray-800">{out.input}</td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                              out.status === 'Found' ? 'bg-green-100 text-green-700' :
+                              out.status === 'Not Found' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {out.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{out.details}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Auth buttons */}
+            <div className="flex justify-center gap-4">
+              {session ? (
                 <button
-                  onClick={() => router.push('/admin')}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2 shadow-md"
+                  onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                  className="px-6 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium transition"
                 >
-                  <span>🔐</span>
-                  <span>Admin Dashboard</span>
+                  Logout
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push('/auth/signin')}
+                  className="px-6 py-2 text-sm text-purple-600 hover:text-purple-700 font-medium transition"
+                >
+                  Admin Login
                 </button>
               )}
             </div>
           </div>
         </div>
-      </header>
+      </main>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl">
+      {/* Partner Footer */}
+      <PartnerFooter />
 
-        {!isBatchMode && (
-          <ForensicMode
-            isEnabled={forensicMode}
-            onToggle={setForensicMode}
-            currentSnapshot={currentSnapshot}
-            query={currentQuery}
-          />
-        )}
-
-        <div className="rounded-lg bg-white p-8 shadow-xl">
-          {/* Customer Logo */}
-          {customerLogo && (
-            <div className="flex justify-center mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={customerLogo}
-                alt="Customer Logo"
-                className="max-h-16 object-contain"
-              />
-            </div>
-          )}
-
-          <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">
-            Roblox Verifier Tool
-          </h1>
-
-          {!isBatchMode && (
-            <SearchModeSelector
-              selectedMode={searchMode}
-              onModeChange={setSearchMode}
-              smartCooldown={smartCooldown}
-              displayNameCooldown={displayNameCooldown}
-            />
-          )}
-
-          <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                searchMode === 'exact'
-                  ? 'Enter exact username, user ID, or URL'
-                  : searchMode === 'smart'
-                  ? 'Enter username for smart matching'
-                  : 'Enter display name to search'
-              }
-              className="w-full rounded-md border border-gray-300 p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
-            />
-            
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={includeBanned}
-                onChange={(e) => setIncludeBanned(e.target.checked)}
-                className="h-4 w-4 text-blue-500 focus:ring-blue-200"
-              />
-              <label className="text-gray-700">Include banned/unavailable accounts</label>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-md bg-gradient-to-r from-blue-500 to-purple-600 p-3 text-white font-medium hover:from-blue-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 transition shadow-lg"
-              disabled={loading || (searchMode === 'smart' && smartCooldown.isOnCooldown) || (searchMode === 'displayName' && displayNameCooldown.isOnCooldown)}
-            >
-              {loading ? 'Searching...' : searchMode === 'exact' ? '🎯 Exact Search' : searchMode === 'smart' ? '🧠 Smart Search' : '🏷️ Search Display Names'}
-            </button>
-          </form>
-
-          <div className="mt-6">
-            <label className="block text-gray-700 mb-2 flex items-center">
-              Batch Upload (CSV):
-              <span className="relative inline-block ml-2 group">
-                <span className="cursor-help bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                  i
-                </span>
-                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 w-64 z-10">
-                  Upload a CSV file with one column of usernames, display names, or URLs. No headers
-                  needed.
-                </div>
-              </span>
-            </label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleBatchUpload}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
-
-          {loading && (
-            <div className="mt-4 text-center text-blue-500 font-medium animate-pulse">
-              Processing...
-            </div>
-          )}
-
-          {result && <div className="mt-6 rounded-md bg-gray-100 p-6 shadow-inner">{result}</div>}
-
-          {!isBatchMode && searchMode === 'displayName' && displayNameUsers.length > 0 && (
-            <DisplayNameResults
-              users={displayNameUsers}
-              query={originalDisplayNameQuery}
-              onSelect={handleSelectCandidate}
-              onInspect={handleInspectCandidate}
-              loading={loading}
-            />
-          )}
-
-          {!isBatchMode && searchMode === 'smart' && scoredCandidates.length > 0 && (
-            <SmartSuggest
-              candidates={scoredCandidates}
-              query={originalDisplayNameQuery}
-              onSelect={handleSelectCandidate}
-              onInspect={handleInspectCandidate}
-              loading={loading}
-            />
-          )}
-
-          {isBatchMode && batchResults.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-xl font-bold mb-4">Batch Results</h2>
-              <table className="w-full border-collapse border">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="p-3 text-left border-b">Input</th>
-                    <th className="p-3 text-left border-b">Status</th>
-                    <th className="p-3 text-left border-b">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {batchResults.map((out, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="p-3 border-b">{out.input}</td>
-                      <td className="p-3 border-b">{out.status}</td>
-                      <td className="p-3 border-b">{out.details}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button
-                onClick={() => exportToCSV(batchResults)}
-                className="mt-4 rounded-md bg-green-500 p-3 text-white font-medium hover:bg-green-600 transition"
-              >
-                📥 Export CSV
-              </button>
-            </div>
-          )}
-
-          {/* Show logout button only for authenticated users */}
-          {session && (
-            <button
-              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-              className="mt-6 w-full rounded-md bg-red-500 p-3 text-white font-medium hover:bg-red-600 transition"
-            >
-              Logout
-            </button>
-          )}
-
-          {/* Show login button for unauthenticated users */}
-          {!session && (
-            <button
-              onClick={() => router.push('/auth/signin')}
-              className="mt-6 w-full rounded-md bg-blue-500 p-3 text-white font-medium hover:bg-blue-600 transition"
-            >
-              Admin Login
-            </button>
-          )}
-        </div>
-      </div>
-      </div>
-
+      {/* Modals */}
       {showDeepContext && selectedUserId && (
         <DeepContext
           userId={selectedUserId}
@@ -921,7 +878,7 @@ function VerifierTool() {
         onTrySmartSearch={handleTrySmartSearch}
         searchQuery={noResultsQuery}
       />
-    </main>
+    </div>
   );
 }
 
