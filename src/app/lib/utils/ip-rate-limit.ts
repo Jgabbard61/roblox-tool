@@ -45,11 +45,9 @@ export function checkIPRateLimit(ipAddress: string): {
     };
   }
 
-  // Increment count
-  record.count++;
-
-  if (record.count > RATE_LIMIT) {
-    // Rate limit exceeded
+  // Check if already at limit BEFORE incrementing
+  if (record.count >= RATE_LIMIT) {
+    // Rate limit exceeded - don't increment further
     const resetTime = new Date(record.resetTime);
     const minutesRemaining = Math.ceil((record.resetTime - now) / (60 * 1000));
 
@@ -60,6 +58,9 @@ export function checkIPRateLimit(ipAddress: string): {
       message: `You have exceeded the search limit of ${RATE_LIMIT} searches per hour. Please come back in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''} to search more or contact Support@Verifylens.com for assistance.`,
     };
   }
+
+  // Increment count only if under limit
+  record.count++;
 
   return {
     allowed: true,
