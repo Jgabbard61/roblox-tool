@@ -7,6 +7,13 @@ export default function HeroHeader() {
   const { data: session } = useSession();
   const router = useRouter();
 
+  const scrollToSearch = () => {
+    const searchSection = document.getElementById('search-section');
+    if (searchSection) {
+      searchSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <header className="relative overflow-hidden">
       {/* Animated gradient background */}
@@ -61,7 +68,7 @@ export default function HeroHeader() {
       </nav>
 
       {/* Hero content */}
-      <div className="relative z-10 px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <div className="relative z-10 px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="max-w-4xl mx-auto text-center">
           {/* Collaboration badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6">
@@ -78,7 +85,7 @@ export default function HeroHeader() {
           </div>
 
           {/* Main title */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-blue-200">
               Roblox Username
             </span>
@@ -89,34 +96,57 @@ export default function HeroHeader() {
           </h2>
 
           {/* Tagline */}
-          <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-8">
+          <p className="text-base sm:text-lg text-white/70 max-w-2xl mx-auto mb-6">
             Your trusted partner for instant Roblox username verification.
-            <span className="block mt-2 text-purple-300">Fast, accurate, and completely free.</span>
+            <span className="block mt-1 text-purple-300">Fast, accurate, and completely free.</span>
           </p>
 
           {/* Stats/trust indicators */}
-          <div className="flex flex-wrap justify-center gap-6 sm:gap-8">
+          <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mb-8">
             <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-white">100%</div>
-              <div className="text-sm text-white/60">Free to Use</div>
+              <div className="text-xl sm:text-2xl font-bold text-white">100%</div>
+              <div className="text-xs text-white/60">Free to Use</div>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block"></div>
+            <div className="w-px h-10 bg-white/20 hidden sm:block"></div>
             <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-white">25</div>
-              <div className="text-sm text-white/60">Searches/Hour</div>
+              <div className="text-xl sm:text-2xl font-bold text-white">25</div>
+              <div className="text-xs text-white/60">Searches/Hour</div>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block"></div>
+            <div className="w-px h-10 bg-white/20 hidden sm:block"></div>
             <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-white">Instant</div>
-              <div className="text-sm text-white/60">Results</div>
+              <div className="text-xl sm:text-2xl font-bold text-white">Instant</div>
+              <div className="text-xs text-white/60">Results</div>
             </div>
           </div>
+
+          {/* Scroll indicator */}
+          <button 
+            onClick={scrollToSearch}
+            className="inline-flex flex-col items-center gap-2 text-white/70 hover:text-white transition-colors group cursor-pointer"
+          >
+            <span className="text-sm font-medium">Start Searching</span>
+            <div className="animate-bounce">
+              <svg 
+                className="w-8 h-8 text-purple-400 group-hover:text-purple-300 transition" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3" 
+                />
+              </svg>
+            </div>
+          </button>
         </div>
       </div>
 
       {/* Wave separator */}
       <div className="relative z-10">
-        <svg className="w-full h-16 sm:h-24" viewBox="0 0 1440 100" fill="none" preserveAspectRatio="none">
+        <svg className="w-full h-12 sm:h-16" viewBox="0 0 1440 100" fill="none" preserveAspectRatio="none">
           <path d="M0,50 C360,100 720,0 1080,50 C1260,75 1380,75 1440,50 L1440,100 L0,100 Z" fill="#f8fafc" />
         </svg>
       </div>

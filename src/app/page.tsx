@@ -722,6 +722,7 @@ function VerifierTool() {
           )}
 
           {/* Modern Search Card */}
+          <div id="search-section">
           <ModernSearchCard
             searchMode={searchMode}
             onModeChange={setSearchMode}
@@ -735,6 +736,7 @@ function VerifierTool() {
             displayNameCooldown={displayNameCooldown}
             onFileUpload={handleBatchUpload}
           />
+          </div>
 
           {/* Results Section */}
           <div className="mt-8 space-y-6">
