@@ -17,7 +17,7 @@ import HeroHeader from './components/HeroHeader';
 import PartnerFooter from './components/PartnerFooter';
 import ModernSearchCard from './components/ModernSearchCard';
 import { useCooldown } from './hooks/useCooldown';
-import { getTopSuggestions } from './lib/ranking';
+// Removed: import { getTopSuggestions } from './lib/ranking'; - server now handles ranking
 import { useCreditBalance } from './context/CreditContext';
 
 function normalizeInput(rawInput: string): { type: 'username' | 'displayName' | 'userId' | 'url' | 'invalid'; value: string; userId?: string } {
@@ -237,7 +237,8 @@ function VerifierTool() {
               if (session) refreshBalance();
             }
             
-            const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+            // Server already returns ranked ScoredCandidate[] for smart mode - use directly
+            const candidates = (searchData.data || []).slice(0, 10);
             
             if (!isCurrentlyBatchMode) {
               setScoredCandidates(candidates);
@@ -420,7 +421,8 @@ function VerifierTool() {
           }
           
           const searchData = await response.json();
-          const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+          // Server already returns ranked ScoredCandidate[] for smart mode - use directly
+          const candidates = (searchData.data || []).slice(0, 10);
           
           if (!isCurrentlyBatchMode) {
             setScoredCandidates(candidates);
@@ -493,7 +495,8 @@ function VerifierTool() {
             }
             
             const searchData = await response.json();
-            const candidates = getTopSuggestions(parsed.value, searchData.data || [], 10);
+            // Server already returns ranked ScoredCandidate[] for smart mode - use directly
+            const candidates = (searchData.data || []).slice(0, 10);
             
             if (!isCurrentlyBatchMode) {
               setScoredCandidates(candidates);
@@ -661,7 +664,8 @@ function VerifierTool() {
         }
         
         const searchData = await response.json();
-        const candidates = getTopSuggestions(noResultsQuery, searchData.data || [], 10);
+        // Server already returns ranked ScoredCandidate[] for smart mode - use directly
+        const candidates = (searchData.data || []).slice(0, 10);
         
         setScoredCandidates(candidates);
         setOriginalDisplayNameQuery(noResultsQuery);
