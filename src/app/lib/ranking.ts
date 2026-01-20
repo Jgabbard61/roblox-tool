@@ -46,7 +46,8 @@ interface ScoredCandidate {
   breakdown: string[];
 }
 
-function normalizeString(str: string): string {
+function normalizeString(str: string | undefined | null): string {
+  if (!str) return '';
   return str.toLowerCase().trim();
 }
 
@@ -219,7 +220,10 @@ export function rankCandidates(
   hints?: RankingHints,
   weights: RankingWeights = DEFAULT_WEIGHTS
 ): ScoredCandidate[] {
-  const scored = candidates.map(candidate => {
+  // Filter out invalid candidates that are missing required fields
+  const validCandidates = candidates.filter(c => c && c.name && c.displayName);
+  
+  const scored = validCandidates.map(candidate => {
     const signals = {
       nameSimilarity: calculateNameSimilarity(query, candidate),
       accountSignals: calculateAccountSignals(candidate),

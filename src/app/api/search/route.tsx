@@ -43,7 +43,8 @@ const RANKING_WEIGHTS = {
   profileCompleteness: 0.10,
 };
 
-function normalizeString(str: string): string {
+function normalizeString(str: string | undefined | null): string {
+  if (!str) return '';
   return str.toLowerCase().trim();
 }
 
