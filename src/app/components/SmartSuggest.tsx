@@ -46,6 +46,16 @@ export default function SmartSuggest({
     groupName: '',
     accountAge: '',
   });
+  const [visibleCount, setVisibleCount] = useState(10);
+  
+  // Get visible candidates based on pagination
+  const visibleCandidates = candidates.slice(0, visibleCount);
+  const hasMoreResults = candidates.length > visibleCount;
+  const remainingCount = candidates.length - visibleCount;
+  
+  const handleShowMore = () => {
+    setVisibleCount(prev => Math.min(prev + 10, candidates.length));
+  };
 
   if (loading) {
     return (
@@ -118,8 +128,8 @@ export default function SmartSuggest({
           Smart Suggestions for &quot;{query}&quot;
         </h3>
         <p className="text-gray-600">
-          Found {candidates.length} ranked candidate{candidates.length !== 1 ? 's' : ''} • 
-          Click to select or inspect profiles
+          Showing {visibleCandidates.length} of {candidates.length} ranked candidate{candidates.length !== 1 ? 's' : ''} • 
+          Click to inspect profiles
         </p>
       </div>
 
@@ -153,7 +163,7 @@ export default function SmartSuggest({
 
       {/* Candidate Cards */}
       <div className="space-y-3">
-        {candidates.map((candidate, idx) => (
+        {visibleCandidates.map((candidate, idx) => (
           <div
             key={candidate.user.id}
             className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-200 p-4 border-l-4 ${getConfidenceBorder(candidate.confidence)} relative overflow-hidden`}
@@ -262,14 +272,19 @@ export default function SmartSuggest({
         ))}
       </div>
 
-      {/* Show more button if many results */}
-      {candidates.length > 5 && (
-        <div className="mt-4 text-center">
-          <button className="px-6 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition shadow">
-            Show More Results
+      {/* Show more button */}
+      <div className="mt-4 text-center">
+        {hasMoreResults ? (
+          <button 
+            onClick={handleShowMore}
+            className="px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition shadow-md"
+          >
+            Show More ({remainingCount} remaining)
           </button>
-        </div>
-      )}
+        ) : candidates.length > 10 ? (
+          <p className="text-gray-500 text-sm">✓ All {candidates.length} results shown</p>
+        ) : null}
+      </div>
     </div>
   );
 }

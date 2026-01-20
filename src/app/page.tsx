@@ -209,7 +209,7 @@ function VerifierTool() {
         } else if (searchMode === 'smart' && (parsed.type === 'username' || parsed.type === 'displayName')) {
           // Smart Match Mode - fuzzy search with AI ranking
           try {
-            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=50&searchMode=smart`);
             
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
@@ -238,7 +238,7 @@ function VerifierTool() {
             }
             
             // Server already returns ranked ScoredCandidate[] for smart mode - use directly
-            const candidates = (searchData.data || []).slice(0, 10);
+            const candidates = (searchData.data || []).slice(0, 50);
             
             if (!isCurrentlyBatchMode) {
               setScoredCandidates(candidates);
@@ -397,7 +397,7 @@ function VerifierTool() {
           user = data.data?.[0] || null;
         } else {
           // Fallback to search for other cases
-          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
+          response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=50&searchMode=smart`);
           
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -422,7 +422,7 @@ function VerifierTool() {
           
           const searchData = await response.json();
           // Server already returns ranked ScoredCandidate[] for smart mode - use directly
-          const candidates = (searchData.data || []).slice(0, 10);
+          const candidates = (searchData.data || []).slice(0, 50);
           
           if (!isCurrentlyBatchMode) {
             setScoredCandidates(candidates);
@@ -475,7 +475,7 @@ function VerifierTool() {
             });
           } else {
             // For non-exact modes, perform smart search fallback
-            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=10&searchMode=smart`);
+            response = await fetch(`/api/search?keyword=${encodeURIComponent(parsed.value)}&limit=50&searchMode=smart`);
             
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
@@ -496,7 +496,7 @@ function VerifierTool() {
             
             const searchData = await response.json();
             // Server already returns ranked ScoredCandidate[] for smart mode - use directly
-            const candidates = (searchData.data || []).slice(0, 10);
+            const candidates = (searchData.data || []).slice(0, 50);
             
             if (!isCurrentlyBatchMode) {
               setScoredCandidates(candidates);
@@ -647,7 +647,7 @@ function VerifierTool() {
         setScoredCandidates([]);
         
         // Perform smart search
-        const response = await fetch(`/api/search?keyword=${encodeURIComponent(noResultsQuery)}&limit=10&searchMode=smart`);
+        const response = await fetch(`/api/search?keyword=${encodeURIComponent(noResultsQuery)}&limit=50&searchMode=smart`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -665,7 +665,7 @@ function VerifierTool() {
         
         const searchData = await response.json();
         // Server already returns ranked ScoredCandidate[] for smart mode - use directly
-        const candidates = (searchData.data || []).slice(0, 10);
+        const candidates = (searchData.data || []).slice(0, 50);
         
         setScoredCandidates(candidates);
         setOriginalDisplayNameQuery(noResultsQuery);
