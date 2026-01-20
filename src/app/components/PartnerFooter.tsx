@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 export default function PartnerFooter() {
   return (
     <footer className="bg-gray-900 text-white">
@@ -19,20 +21,14 @@ export default function PartnerFooter() {
               rel="noopener noreferrer"
               className="group flex flex-col items-center"
             >
-              <div className="w-56 h-20 bg-white/10 rounded-xl flex items-center justify-center mb-3 group-hover:bg-white/20 transition-all border border-white/10 group-hover:border-purple-500/50 p-4">
-                {/* HaveALawyer Logo */}
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    {/* Scales of Justice Icon */}
-                    <svg className="w-10 h-10 text-purple-400 group-hover:text-purple-300 transition" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2L13.09 8.26L19 6L14.74 9.74L21 12L14.74 14.26L19 18L13.09 15.74L12 22L10.91 15.74L5 18L9.26 14.26L3 12L9.26 9.74L5 6L10.91 8.26L12 2Z" />
-                    </svg>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xl font-bold text-white group-hover:text-purple-300 transition leading-tight">HaveA</span>
-                    <span className="text-xl font-bold text-purple-400 group-hover:text-purple-300 transition leading-tight">Lawyer</span>
-                  </div>
-                </div>
+              <div className="h-20 bg-white rounded-xl flex items-center justify-center mb-3 group-hover:bg-gray-100 transition-all border border-white/20 group-hover:border-purple-500/50 px-6 py-3">
+                <Image
+                  src="/logos/havealawyer-logo.jpg"
+                  alt="HaveALawyer"
+                  width={200}
+                  height={60}
+                  className="h-14 w-auto object-contain"
+                />
               </div>
               <span className="text-xs text-gray-500 group-hover:text-gray-400 transition">Legal Services Platform</span>
             </a>
@@ -47,23 +43,14 @@ export default function PartnerFooter() {
               rel="noopener noreferrer"
               className="group flex flex-col items-center"
             >
-              <div className="w-56 h-20 bg-white/10 rounded-xl flex items-center justify-center mb-3 group-hover:bg-white/20 transition-all border border-white/10 group-hover:border-blue-500/50 p-4">
-                {/* Direct Legal Marketing Logo */}
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    {/* Marketing/Target Icon */}
-                    <svg className="w-10 h-10 text-blue-400 group-hover:text-blue-300 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="6" />
-                      <circle cx="12" cy="12" r="2" fill="currentColor" />
-                      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-                    </svg>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white group-hover:text-blue-300 transition leading-tight">Direct Legal</span>
-                    <span className="text-lg font-bold text-blue-400 group-hover:text-blue-300 transition leading-tight">Marketing</span>
-                  </div>
-                </div>
+              <div className="h-20 bg-white/10 rounded-xl flex items-center justify-center mb-3 group-hover:bg-white/20 transition-all border border-white/10 group-hover:border-blue-500/50 px-6 py-3">
+                <Image
+                  src="/logos/dlm-logo-white.png"
+                  alt="Direct Legal Marketing"
+                  width={220}
+                  height={60}
+                  className="h-14 w-auto object-contain"
+                />
               </div>
               <span className="text-xs text-gray-500 group-hover:text-gray-400 transition">Marketing Excellence</span>
             </a>
